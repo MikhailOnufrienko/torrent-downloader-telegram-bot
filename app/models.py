@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 import sqlalchemy as sa
+from sqlalchemy import Index
 from sqlalchemy import orm
 
 from app.database import datetime_default_now, flag_default_false, intpk
@@ -9,7 +10,7 @@ from app.database import datetime_default_now, flag_default_false, intpk
 
 class User(orm.DeclarativeBase):
     id: orm.Mapped[intpk]
-    tg_id: orm.Mapped[int]
+    tg_id: orm.Mapped[int] = orm.mapped_column(index=True)
     is_subscriber: orm.Mapped[flag_default_false]
 
 
@@ -26,4 +27,12 @@ class Torrent(orm.DeclarativeBase):
     task_sent_on: orm.Mapped[Optional[datetime]] = orm.mapped_column(default=None)
     is_processing: orm.Mapped[flag_default_false]
     is_bad: orm.Mapped[flag_default_false]
-    
+
+    __table_args__ = (
+        Index('idx_hash', 'hash', postgresql_using='hash'),
+    )
+
+
+class Content(orm.DeclarativeBase):
+    id: orm.Mapped[intpk]
+    path: orm.Mapped[str] = orm.mapped_column(sa.Text(), nullable=False)

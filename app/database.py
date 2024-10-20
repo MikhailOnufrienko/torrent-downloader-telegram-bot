@@ -1,9 +1,9 @@
-from datetime import date, datetime
-from typing import Annotated, Optional
+from datetime import datetime
+from typing import Annotated
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, mapped_column, sessionmaker
+from sqlalchemy.orm import mapped_column, sessionmaker
 
 from app.config import config
 

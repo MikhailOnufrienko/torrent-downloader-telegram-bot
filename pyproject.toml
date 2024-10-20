@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "torrent-downloader"
+version = "0.1.0"
+description = ""
+authors = ["Mikhail Onufrienko <ghast13@yandex.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+sqlalchemy = "^2.0.36"
+pydantic = "^2.9.2"
+pydantic-settings = "^2.6.0"
+python-telegram-bot = {extras = ["all"], version = "^21.6"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

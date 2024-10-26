@@ -1,6 +1,8 @@
 import os
+import sys
 from typing import Literal
 
+from loguru import logger
 from pydantic import PostgresDsn
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
@@ -37,6 +39,17 @@ class Config(BaseSettings):
     @property
     def is_dev_mode(self) -> bool:
         return self.MODE == "DEV"
+    
+    @property
+    def logger(self):
+        logger.remove()
+        logger.add(
+            sys.stdout,
+            format="<green>{time}</green> | <level>{level}</level> | <cyan>{name}</cyan> | {message}",
+            level="DEBUG", enqueue=True, backtrace=True, diagnose=True
+        )
+        logger.add("downloader.log", rotation="50 MB", retention="10 days", compression="zip")
+        return logger
     
 
 config = Config()

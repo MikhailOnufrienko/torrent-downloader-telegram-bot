@@ -18,15 +18,14 @@ class Torrent(orm.DeclarativeBase):
     id: orm.Mapped[intpk]
     user_id:  orm.Mapped[int]
     hash: orm.Mapped[Optional[str]] = orm.mapped_column(sa.String(65))
-    magnet_link: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text(), nullable=True)
-    file: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text(), nullable=True)
+    magnet_link: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text())
+    file: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text())
     size: orm.Mapped[int]
     added_on: orm.Mapped[datetime_default_now]
     is_task_sent: orm.Mapped[flag_default_false]
     is_task_failed: orm.Mapped[flag_default_false]
     task_sent_on: orm.Mapped[Optional[datetime]] = orm.mapped_column(default=None)
     is_processing: orm.Mapped[flag_default_false]
-    is_bad: orm.Mapped[flag_default_false]
 
     __table_args__ = (
         Index('idx_hash', 'hash', postgresql_using='hash'),
@@ -35,4 +34,4 @@ class Torrent(orm.DeclarativeBase):
 
 class Content(orm.DeclarativeBase):
     id: orm.Mapped[intpk]
-    path: orm.Mapped[str] = orm.mapped_column(sa.Text(), nullable=False)
+    path: orm.Mapped[str] = orm.mapped_column(sa.Text())

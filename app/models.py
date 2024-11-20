@@ -11,6 +11,9 @@ from app.database import datetime_default_now, flag_default_false, intpk
 class User(orm.DeclarativeBase):
     id: orm.Mapped[intpk]
     tg_id: orm.Mapped[int] = orm.mapped_column(index=True)
+    username: orm.Mapped[Optional[str]]
+    first_name: orm.Mapped[Optional[str]]
+    last_name: orm.Mapped[Optional[str]]
     is_subscriber: orm.Mapped[flag_default_false]
 
 
@@ -19,7 +22,6 @@ class Torrent(orm.DeclarativeBase):
     user_id:  orm.Mapped[int]
     hash: orm.Mapped[Optional[str]] = orm.mapped_column(sa.String(65))
     magnet_link: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text())
-    file: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text())
     size: orm.Mapped[int]
     added_on: orm.Mapped[datetime_default_now]
     is_task_sent: orm.Mapped[flag_default_false]

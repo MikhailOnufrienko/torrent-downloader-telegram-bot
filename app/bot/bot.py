@@ -26,10 +26,12 @@ class Bot:
         if message.text and message.text.lower().startswith('magnet'):
             magnet_link = message.text
             await update.message.reply_text(Messages.link_received)
-            resp = await self._bot_svc.check_magnet_link(magnet_link)
+            resp = await self._bot_svc.process_magnet_link(magnet_link)
         elif message.document:
             file = message.document
             await update.message.reply_text(Messages.file_received)
+            info_hash, magnet_link = bot_service.generate_hash_and_magnet_link_from_file(file)
+            resp = await self._bot_svc.process_magnet_link(magnet_link, info_hash)
 
         else:
             await update.message.reply_text(Messages.invitation_after_error)

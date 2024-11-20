@@ -3,7 +3,7 @@ import sys
 from typing import Literal
 
 from loguru import logger
-from pydantic import PostgresDsn
+from pydantic import PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
@@ -23,6 +23,9 @@ class Config(BaseSettings):
     POSTGRES_DSN: PostgresDsn = 'postgresql+asyncpg://postgres:postgres@localhost:5432/torrent_downloader'
     MAXIMUM_TORRENTS_TO_SEND: int = 16
     TELEGRAM_BOT_TOKEN: str
+    QBITTORRENT_CLIENT_DSN: str = "http://localhost:8080"
+    QBITTORRENT_AUTH_USER: str = "admin"
+    QBITTORRENT_AUTH_PASS: SecretStr
 
     @property
     def postgres_dsn(self) -> str:
@@ -39,6 +42,10 @@ class Config(BaseSettings):
     @property
     def is_dev_mode(self) -> bool:
         return self.MODE == "DEV"
+    
+    @property
+    def qbittorrent_auth_pass(self):
+        return self.QBITTORRENT_AUTH_PASS.get_secret_value()
     
     @property
     def logger(self):

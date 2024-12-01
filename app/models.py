@@ -11,11 +11,19 @@ from app.database import datetime_default_now, flag_default_false, intpk
 class User(orm.DeclarativeBase):
     id: orm.Mapped[intpk]
     tg_id: orm.Mapped[int] = orm.mapped_column(index=True)
-    username: orm.Mapped[Optional[str]]
+    username: orm.Mapped[str]
     first_name: orm.Mapped[Optional[str]]
     last_name: orm.Mapped[Optional[str]]
     is_subscriber: orm.Mapped[flag_default_false]
+    is_bot: orm.Mapped[bool]
+    language_code: orm.Mapped[str]
+    created_at: orm.Mapped[datetime_default_now]
+    updated_at: orm.Mapped[Optional[datetime]]
+    torrents: orm.Mapped[list[int]]
 
+    # __table_args__ = (
+    #     Index('tg_idx', 'tg_id', postgresql_using='tg_id'),
+    # )
 
 class Torrent(orm.DeclarativeBase):
     id: orm.Mapped[intpk]
@@ -23,10 +31,10 @@ class Torrent(orm.DeclarativeBase):
     hash: orm.Mapped[Optional[str]] = orm.mapped_column(sa.String(65))
     magnet_link: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text())
     size: orm.Mapped[int]
-    added_on: orm.Mapped[datetime_default_now]
+    added_at: orm.Mapped[datetime_default_now]
     is_task_sent: orm.Mapped[flag_default_false]
     is_task_failed: orm.Mapped[flag_default_false]
-    task_sent_on: orm.Mapped[Optional[datetime]] = orm.mapped_column(default=None)
+    task_sent_at: orm.Mapped[Optional[datetime]] = orm.mapped_column(default=None)
     is_processing: orm.Mapped[flag_default_false]
 
     __table_args__ = (
@@ -36,4 +44,5 @@ class Torrent(orm.DeclarativeBase):
 
 class Content(orm.DeclarativeBase):
     id: orm.Mapped[intpk]
+    torrent: orm.Mapped[int]
     path: orm.Mapped[str] = orm.mapped_column(sa.Text())

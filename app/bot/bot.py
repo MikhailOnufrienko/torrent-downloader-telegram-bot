@@ -3,15 +3,23 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, MessageHandler, filters)
 
 from app.bot.messages import Messages
-from app.bot.service import bot_service
+from app.bot.service import BotService, bot_service
 from app.config import config
+from app.entities.user.service import UserService, user_service
 
 
 class Bot:
-    def __init__(self, bot_service=bot_service):
+    def __init__(
+        self,
+        bot_service: BotService = bot_service,
+        user_service: UserService = user_service,
+    ):
         self._bot_svc = bot_service
+        self._user_svc = user_service
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user = update.message.from_user
+        self._user_svc.save()
         keyboard = [[InlineKeyboardButton("Start", callback_data="start_pressed")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(Messages.hello, reply_markup=reply_markup)
@@ -25,23 +33,24 @@ class Bot:
         message = update.message
         if message.text and message.text.lower().startswith('magnet'):
             magnet_link = message.text
+            info_hash = None
             await update.message.reply_text(Messages.link_received)
-            resp = await self._bot_svc.process_magnet_link(magnet_link)
         elif message.document:
             file = message.document
             await update.message.reply_text(Messages.file_received)
             info_hash, magnet_link = bot_service.generate_hash_and_magnet_link_from_file(file)
-            resp = await self._bot_svc.process_magnet_link(magnet_link, info_hash)
-
         else:
             await update.message.reply_text(Messages.invitation_after_error)
+            return
+        torrent_info = await self._bot_svc.fetch_torrent_info(magnet_link, info_hash)
 
 
 def main():
+    bot_instance = Bot()
     application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", Bot.start))
-    application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, Bot.handle_message))
-    application.add_handler(CallbackQueryHandler(Bot.button))
+    application.add_handler(CommandHandler("start", bot_instance.start))
+    application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_message))
+    application.add_handler(CallbackQueryHandler(bot_instance.button))
     application.run_polling()
 
 if __name__ == "__main__":

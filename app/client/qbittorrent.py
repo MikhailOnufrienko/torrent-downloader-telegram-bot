@@ -4,7 +4,7 @@ from app.config import config
 
 
 class TorrentClient:
-    def __init__(self, dsn: str, username: str, password: str, upload_limit: int):
+    def __init__(self, dsn: str, username: str, password: str):
         self._client = Client(dsn)
         self._client.login(username, password)
 

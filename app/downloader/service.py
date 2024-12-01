@@ -9,9 +9,6 @@ class DownloadService:
     ):
         self._downloader = downloader
         self._torrent_client = torrent_cli
-    
-    def fetch_torrent_info(link: str):
-        pass
 
 
-downloader_service = DownloadService()
+download_service = DownloadService()

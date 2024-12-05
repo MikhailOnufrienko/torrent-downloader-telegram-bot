@@ -20,7 +20,7 @@ class Config(BaseSettings):
     model_config = model_config
 
     MODE: Literal['DEV', 'PROD', 'TEST'] = 'DEV'
-    POSTGRES_DSN: PostgresDsn = 'postgresql+asyncpg://postgres:postgres@localhost:5432/torrent_downloader'
+    POSTGRES_DSN: PostgresDsn = 'postgresql+asyncpg://postgres:postgres@localhost:5432/torrent_dl'
     MAXIMUM_TORRENTS_TO_SEND: int = 16
     TELEGRAM_BOT_TOKEN: str
     QBITTORRENT_CLIENT_DSN: str = "http://localhost:8080"
@@ -29,8 +29,6 @@ class Config(BaseSettings):
 
     @property
     def postgres_dsn(self) -> str:
-        if self.is_dev_mode:
-            return self.POSTGRES_DSN.unicode_string() + "_dev"
         if self.is_test_mode:
             return self.POSTGRES_DSN.unicode_string() + "_test"
         return self.POSTGRES_DSN.unicode_string()

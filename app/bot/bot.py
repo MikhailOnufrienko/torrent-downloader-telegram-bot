@@ -19,7 +19,7 @@ class Bot:
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.message.from_user
-        self._user_svc.save()
+        self._user_svc.save(user)
         keyboard = [[InlineKeyboardButton("Start", callback_data="start_pressed")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(Messages.hello, reply_markup=reply_markup)

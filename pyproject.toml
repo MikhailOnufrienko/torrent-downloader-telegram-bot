@@ -15,6 +15,7 @@ alembic = "^1.13.3"
 loguru = "^0.7.2"
 qbittorrent = "^0.1.6"
 bencodepy = "^0.9.5"
+asyncpg = "^0.30.0"
 
 
 [build-system]

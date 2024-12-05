@@ -1,9 +1,9 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated
 
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import mapped_column, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, mapped_column, sessionmaker
 
 from app.config import config
 
@@ -21,3 +21,11 @@ flag_default_false = Annotated[bool, mapped_column(default=False, server_default
 datetime_default_now = Annotated[
     datetime, mapped_column(default=lambda: datetime.now().replace(microsecond=0))
 ]
+
+class Base(DeclarativeBase):
+    type_annotation_map = {
+        int: sa.Integer,
+        bool: sa.Boolean,
+        date: sa.Date,
+        datetime: sa.DateTime,
+    }

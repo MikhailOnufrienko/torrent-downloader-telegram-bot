@@ -13,9 +13,9 @@ pydantic-settings = "^2.6.0"
 python-telegram-bot = {extras = ["all"], version = "^21.6"}
 alembic = "^1.13.3"
 loguru = "^0.7.2"
-qbittorrent = "^0.1.6"
 bencodepy = "^0.9.5"
 asyncpg = "^0.30.0"
+python-qbittorrent = "^0.4.3"
 
 
 [build-system]

@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import re
 from typing import BinaryIO
@@ -5,7 +6,11 @@ from typing import BinaryIO
 import bencodepy
 
 from app.client.qbittorrent import TorrentClient, torrent_client
+from app.config import config
 from app.downloader.service import DownloadService, download_service
+from app.entities.torrent.service import TorrentService, torrent_service
+from app.entities.user.service import UserService, user_service
+from app.models import Torrent
 
 
 class BotService:
@@ -13,9 +18,13 @@ class BotService:
             self,
             download_svc: DownloadService = download_service,
             torrent_client: TorrentClient = torrent_client,
+            torrent_service: TorrentService = torrent_service,
+            user_service: UserService = user_service,
     ):
         self._downl_svc = download_svc
         self._torrent_cli = torrent_client
+        self._torrent_svc = torrent_service
+        self._user_svc = user_service
 
     @staticmethod
     def generate_hash_and_magnet_link_from_file(self, file: BinaryIO) -> tuple[str, str]:
@@ -32,13 +41,28 @@ class BotService:
         elif b"announce" in torrent_data:
             magnet_link += f'&tr={torrent_data[b"announce"].decode()}'
         return info_hash, magnet_link
-
-    async def fetch_torrent_info(self, magnet_link: str, info_hash: str = None) -> dict | None:
+    
+    async def save_torrent_or_get_existing(self, user_tg_id: int, magnet_link: str, info_hash: str = None) -> Torrent | None:
         if not info_hash:
             info_hash = self.extract_info_hash_from_magnet_link(magnet_link)
             if not info_hash:
                 return None
-            return self._torrent_cli.get_torrent(info_hash)
+        user = await self._user_svc.get_by_tg_id(user_tg_id)
+        if not user:
+            return None
+        torrent_info = await self.fetch_torrent_info(magnet_link, info_hash)
+        torrent = {
+            'user_id': user.id,
+            'info_hash': info_hash,
+            'magnet_link': magnet_link,
+            'size': torrent_info['total_size']
+        }
+        torrent = await self._torrent_svc.save_or_get_existing(torrent)
+
+    async def fetch_torrent_info(self, magnet_link: str, info_hash: str) -> dict:
+        self._torrent_cli.download_from_link(magnet_link, savepath=config.SAVEPATH)
+        await asyncio.sleep(10)
+        return self._torrent_cli.get_torrent(info_hash)
 
     @staticmethod
     def extract_info_hash_from_magnet_link(magnet_link: str) -> str | None:
@@ -47,6 +71,11 @@ class BotService:
         if match:
             return match.group(1).lower()
         return None
+    
+    async def construct_torrent_files_hierarchy(self, info_hash: str) -> dict:
+        torrent_files = self._torrent_cli.get_torrent_files(info_hash)
+        hierarchy = {(file['index'], file['name'], file['size']) for file in torrent_files}
+        return hierarchy
 
 
 bot_service = BotService()

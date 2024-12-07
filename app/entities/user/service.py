@@ -16,6 +16,9 @@ class UserService:
                 f'User saved: id {user_saved.id}, tg_id {user_saved.tg_id}, username {user_saved.username}'
             )
             return user_saved
+    
+    async def get_by_tg_id(self, tg_id: int) -> User | None:
+        return await self._user_mng.get(tg_id)
 
 
 user_service = UserService()

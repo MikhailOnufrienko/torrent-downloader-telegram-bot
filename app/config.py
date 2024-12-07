@@ -26,6 +26,7 @@ class Config(BaseSettings):
     QBITTORRENT_CLIENT_DSN: str = "http://localhost:8080"
     QBITTORRENT_AUTH_USER: str = "admin"
     QBITTORRENT_AUTH_PASS: SecretStr
+    SAVEPATH: str
 
     @property
     def postgres_dsn(self) -> str:

@@ -42,7 +42,10 @@ class Bot:
         else:
             await update.message.reply_text(Messages.invitation_after_error)
             return
-        torrent_info = await self._bot_svc.fetch_torrent_info(magnet_link, info_hash)
+        torrent = await self._bot_svc.save_torrent_or_get_existing(update.message.from_user['id'], magnet_link, info_hash)
+        # if torrent:
+        #     torrent_files_hierarchy = await self._bot_svc.construct_torrent_files_hierarchy(info_hash)
+        #     config.logger.debug(torrent_files_hierarchy)
 
 
 def main():

@@ -16,7 +16,7 @@ class TorrentManager:
         )
         return await self._dao.insert(**torrent.model_dump())
     
-    async def get(self, info_hash: str) -> Torrent | None:
+    async def get_by_info_hash(self, info_hash: str) -> Torrent | None:
         return await self._dao.find_one_or_none(hash=info_hash)
 
 

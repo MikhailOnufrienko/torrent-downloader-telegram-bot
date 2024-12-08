@@ -1,5 +1,3 @@
-
-from app.config import config
 from app.entities.torrent.manager import TorrentManager, torrent_manager
 from app.models import Torrent
 
@@ -9,7 +7,7 @@ class TorrentService:
         self._torrent_mng = torrent_manager
 
     async def save_or_get_existing(self, torrent: dict) -> Torrent:
-        torrent_ = await self._torrent_mng.get(torrent['info_hash'])
+        torrent_ = await self._torrent_mng.get_by_info_hash(torrent['info_hash'])
         if not torrent_:
             torrent_ = await self._torrent_mng.save(torrent)
         return torrent_

@@ -9,6 +9,7 @@ from telegram import User as TGUser
 from app.client.qbittorrent import TorrentClient, torrent_client
 from app.config import config
 from app.downloader.service import DownloadService, download_service
+from app.entities.content.service import ContentService, content_service
 from app.entities.torrent.service import TorrentService, torrent_service
 from app.entities.user.service import UserService, user_service, UserTorrentService, user_torrent_service
 from app.models import Torrent
@@ -17,13 +18,15 @@ from app.models import Torrent
 class BotService:
     def __init__(
         self,
-        download_svc: DownloadService = download_service,
+        content_service: ContentService = content_service,
+        download_service: DownloadService = download_service,
         torrent_client: TorrentClient = torrent_client,
         torrent_service: TorrentService = torrent_service,
         user_service: UserService = user_service,
         user_torrent_service: UserTorrentService = user_torrent_service,
     ):
-        self._downl_svc = download_svc
+        self._content_svc = content_service
+        self._downl_svc = download_service
         self._torrent_cli = torrent_client
         self._torrent_svc = torrent_service
         self._user_svc = user_service
@@ -48,7 +51,7 @@ class BotService:
             magnet_link += f'&tr={torrent_data[b"announce"].decode()}'
         return info_hash, magnet_link
     
-    async def save_torrent_or_get_existing(
+    async def save_torrent_and_contents(
         self, user_tg_id: int, magnet_link: str, info_hash: str = None
      ) -> Torrent | None:
         if not info_hash:
@@ -68,6 +71,9 @@ class BotService:
         }
         torrent = await self._torrent_svc.save_or_get_existing(torrent)
         await self._user_torrent_svc.save_association(user.id, torrent.id)
+        torrent_files = self._torrent_cli.get_torrent_files(info_hash)
+        contents_ids = await self._content_svc.save_many(torrent_files)
+        print(contents_ids)
 
     async def fetch_torrent_info(self, magnet_link: str, info_hash: str) -> dict:
         self._torrent_cli.download_from_link(magnet_link, savepath=config.SAVEPATH)

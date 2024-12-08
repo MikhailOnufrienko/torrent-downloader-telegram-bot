@@ -9,7 +9,7 @@ class TorrentManager:
 
     async def save(self, torrent: dict) -> Torrent:
         torrent = TorrentSaveSchema(
-            user_id=torrent['user_id'],
+            title=torrent['title'],
             hash=torrent['info_hash'],
             magnet_link=torrent['magnet_link'],
             size=torrent['size'],

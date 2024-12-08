@@ -4,30 +4,36 @@ import re
 from typing import BinaryIO
 
 import bencodepy
+from telegram import User as TGUser
 
 from app.client.qbittorrent import TorrentClient, torrent_client
 from app.config import config
 from app.downloader.service import DownloadService, download_service
 from app.entities.torrent.service import TorrentService, torrent_service
-from app.entities.user.service import UserService, user_service
+from app.entities.user.service import UserService, user_service, UserTorrentService, user_torrent_service
 from app.models import Torrent
 
 
 class BotService:
     def __init__(
-            self,
-            download_svc: DownloadService = download_service,
-            torrent_client: TorrentClient = torrent_client,
-            torrent_service: TorrentService = torrent_service,
-            user_service: UserService = user_service,
+        self,
+        download_svc: DownloadService = download_service,
+        torrent_client: TorrentClient = torrent_client,
+        torrent_service: TorrentService = torrent_service,
+        user_service: UserService = user_service,
+        user_torrent_service: UserTorrentService = user_torrent_service,
     ):
         self._downl_svc = download_svc
         self._torrent_cli = torrent_client
         self._torrent_svc = torrent_service
         self._user_svc = user_service
+        self._user_torrent_svc = user_torrent_service
+    
+    async def save_user_if_not_exists(self, user: TGUser) -> None:
+        await self._user_svc.save_if_not_exists(user)
 
     @staticmethod
-    def generate_hash_and_magnet_link_from_file(self, file: BinaryIO) -> tuple[str, str]:
+    def generate_hash_and_magnet_link_from_file(file: BinaryIO) -> tuple[str, str]:
         """Generate an info hash and a magnet link from the given torrent file."""
         with open(file, 'rb') as f:
             torrent_data = bencodepy.decode(f.read())
@@ -42,7 +48,9 @@ class BotService:
             magnet_link += f'&tr={torrent_data[b"announce"].decode()}'
         return info_hash, magnet_link
     
-    async def save_torrent_or_get_existing(self, user_tg_id: int, magnet_link: str, info_hash: str = None) -> Torrent | None:
+    async def save_torrent_or_get_existing(
+        self, user_tg_id: int, magnet_link: str, info_hash: str = None
+     ) -> Torrent | None:
         if not info_hash:
             info_hash = self.extract_info_hash_from_magnet_link(magnet_link)
             if not info_hash:
@@ -52,12 +60,14 @@ class BotService:
             return None
         torrent_info = await self.fetch_torrent_info(magnet_link, info_hash)
         torrent = {
-            'user_id': user.id,
+            'user': user,
+            'title': torrent_info['name'],
             'info_hash': info_hash,
             'magnet_link': magnet_link,
-            'size': torrent_info['total_size']
+            'size': torrent_info['total_size'],
         }
         torrent = await self._torrent_svc.save_or_get_existing(torrent)
+        await self._user_torrent_svc.save_association(user.id, torrent.id)
 
     async def fetch_torrent_info(self, magnet_link: str, info_hash: str) -> dict:
         self._torrent_cli.download_from_link(magnet_link, savepath=config.SAVEPATH)

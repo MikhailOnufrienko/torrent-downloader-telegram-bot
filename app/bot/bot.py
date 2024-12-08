@@ -5,21 +5,18 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
 from app.bot.messages import Messages
 from app.bot.service import BotService, bot_service
 from app.config import config
-from app.entities.user.service import UserService, user_service
 
 
 class Bot:
     def __init__(
         self,
         bot_service: BotService = bot_service,
-        user_service: UserService = user_service,
     ):
         self._bot_svc = bot_service
-        self._user_svc = user_service
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user = update.message.from_user
-        await self._user_svc.save_if_not_exists(user)
+        await self._bot_svc.save_user_if_not_exists(user)
         keyboard = [[InlineKeyboardButton("Start", callback_data="start_pressed")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(Messages.hello, reply_markup=reply_markup)
@@ -38,7 +35,7 @@ class Bot:
         elif message.document:
             file = message.document
             await update.message.reply_text(Messages.file_received)
-            info_hash, magnet_link = bot_service.generate_hash_and_magnet_link_from_file(file)
+            info_hash, magnet_link = self._bot_svc.generate_hash_and_magnet_link_from_file(file)
         else:
             await update.message.reply_text(Messages.invitation_after_error)
             return

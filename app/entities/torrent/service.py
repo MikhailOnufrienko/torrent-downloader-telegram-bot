@@ -9,10 +9,10 @@ class TorrentService:
         self._torrent_mng = torrent_manager
 
     async def save_or_get_existing(self, torrent: dict) -> Torrent:
-        existing_torrent = await self._torrent_mng.get(torrent['info_hash'])
-        if not existing_torrent:
-            torrent = await self._torrent_mng.save(torrent)
-        return existing_torrent or torrent
+        torrent_ = await self._torrent_mng.get(torrent['info_hash'])
+        if not torrent_:
+            torrent_ = await self._torrent_mng.save(torrent)
+        return torrent_
 
 
 torrent_service = TorrentService()

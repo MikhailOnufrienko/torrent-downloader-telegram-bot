@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class TorrentSaveSchema(BaseModel):
-    user_id: int
+    title: str
     hash: str
     magnet_link: str
     size: int

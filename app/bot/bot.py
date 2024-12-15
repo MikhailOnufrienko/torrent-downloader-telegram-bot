@@ -1,5 +1,3 @@
-from collections import namedtuple
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, MessageHandler, filters)
@@ -18,7 +16,6 @@ class Bot:
         self._bot_svc = bot_service
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        user_in_tg = update.message.from_user
         keyboard = [[InlineKeyboardButton("Start", callback_data="start_pressed")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(Messages.hello, reply_markup=reply_markup)
@@ -61,24 +58,23 @@ class Bot:
         contents = context.user_data['contents']
         torrent_id = context.user_data['torrent'].id
         if data.startswith("toggle_"):
-            # Обработка выбора строки
+            # File selection.
             item_idx = int(data.split("_")[1])
             item = contents[item_idx].path
-            # Обновляем выбор пользователя
+            # Update user's choice.
             if item in self._bot_svc.user_selections[torrent_id]:
                 self._bot_svc.user_selections[torrent_id].remove(item)
             else:
                 self._bot_svc.user_selections[torrent_id].add(item)
             await self._bot_svc.send_page_with_files(contents, update, context, page=item_idx // config.FILES_PER_PAGE)
         elif data.startswith("page_"):
-            # Обработка переключения страницы
+            # Switching between pages.
             page = int(data.split("_")[1])
             await self._bot_svc.send_page_with_files(contents, update, context, page=page)
         elif data == 'select all':
             self._bot_svc.user_selections[torrent_id] = set(contents)
         elif data == "done":
-            # Завершение выбора
-            await self._bot_svc.save_user_choice(context)
+            # Selection is done.
             selected_items = self._bot_svc.user_selections.get(torrent_id, set())
             if len(selected_items) == len(contents):
                 await query.edit_message_text(text=Messages.all_files_selected)
@@ -87,6 +83,7 @@ class Bot:
             else:
                 text = f'{len(selected_items)} {Messages.files_selected}'
                 await query.edit_message_text(text=text)
+            await self._bot_svc.save_and_download_user_choice(context)
 
 
 def main():

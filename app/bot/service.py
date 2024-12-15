@@ -4,6 +4,7 @@ import re
 from typing import BinaryIO
 
 import bencodepy
+from requests import HTTPError
 from telegram import User as TGUser
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -80,7 +81,12 @@ class BotService:
         }
         torrent = await self._torrent_svc.save_or_get_existing(torrent)
         await self._user_torrent_svc.save_association(user.id, torrent.id)
-        torrent_files = self._torrent_cli.get_torrent_files(info_hash)
+        try:
+            torrent_files = self._torrent_cli.get_torrent_files(info_hash)
+        except HTTPError:
+            self._torrent_cli.download_from_link(magnet_link, savepath=config.SAVEPATH)
+            await asyncio.sleep(5)
+            torrent_files = self._torrent_cli.get_torrent_files(info_hash)
         contents = await self._content_svc.save_many_if_not_exists(torrent_files, torrent.id)
         return torrent, contents
 
@@ -131,13 +137,19 @@ class BotService:
                 chat_id=chat_id, text=Messages.select_files, reply_markup=InlineKeyboardMarkup(keyboard)
             )
     
-    async def save_user_choice(self, context: CallbackContext) -> None:
+    async def save_and_download_user_choice(self, context: CallbackContext) -> None:
         user = await self._user_svc.get_by_tg_id(context._user_id)
-        torrent_id = context.user_data['torrent'].id
+        torrent = context.user_data['torrent']
         contents: list[FileIDIndexPath] = context.user_data['contents']
-        content_ids = [content.id for content in contents if content.path in self.user_selections[torrent_id]]
+        content_ids = [content.id for content in contents if content.path in self.user_selections[torrent.id]]
         for content_id in content_ids:
             await self._user_content_svc.save_association(user.id, content_id)
+        self._torrent_cli.download_from_link(torrent.magnet_link, savepath=config.SAVEPATH)
+        discarded_file_indexes = [  # The files the user doesn't want to download.
+            content.index for content in contents if not content.path in self.user_selections[torrent.id]
+        ]
+        for idx in discarded_file_indexes:
+            self._torrent_cli.set_file_priority(torrent.hash, idx, 0)
 
 
 bot_service = BotService()

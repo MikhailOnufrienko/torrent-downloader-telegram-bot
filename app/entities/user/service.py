@@ -2,7 +2,8 @@ from telegram import User as TGUser
 
 from app.config import config
 from app.entities.user.manager import (
-    UserManager, UserTorrentManager, user_manager, user_torrent_manager
+    UserManager, UserTorrentManager, user_manager, user_torrent_manager,
+    UserContentManager, user_content_manager,
 )
 from app.models import User
 
@@ -11,13 +12,14 @@ class UserService:
     def __init__(self, user_manager: UserManager = user_manager):
         self._user_mng = user_manager
     
-    async def save_if_not_exists(self, user: TGUser) -> User | None:
-        if not await self._user_mng.get_by_tg_id(user.id):
-            user_saved = await self._user_mng.save(user)
+    async def save_or_get_existing(self, user: TGUser) -> User:
+        user_ = await self._user_mng.get_by_tg_id(user.id)
+        if not user_:
+            user_ = await self._user_mng.save(user)
             config.logger.debug(
-                f'User saved: id {user_saved.id}, tg_id {user_saved.tg_id}, username {user_saved.username}'
+                f'User saved: id {user_.id}, tg_id {user_.tg_id}, username {user_.username}'
             )
-            return user_saved
+        return user_
     
     async def get_by_tg_id(self, tg_id: int) -> User | None:
         return await self._user_mng.get_by_tg_id(tg_id)
@@ -34,5 +36,17 @@ class UserTorrentService:
         await self._user_torrent_mng.delete(user_id, torrent_id)
 
 
+class UserContentService:
+    def __init__(self, user_content_manager: UserContentManager = user_content_manager):
+        self._user_content_mng = user_content_manager
+    
+    async def save_association(self, user_id: int, content_id: int) -> None:
+        await self._user_content_mng.save(user_id, content_id)
+    
+    async def delete_association(self, user_id: int, content_id: int) -> None:
+        await self._user_content_mng.delete(user_id, content_id)
+
+
 user_service = UserService()
 user_torrent_service = UserTorrentService()
+user_content_service = UserContentService()

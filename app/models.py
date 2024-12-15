@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 
 import sqlalchemy as sa
-from sqlalchemy import orm
+from sqlalchemy import orm, ForeignKey
 
 from app.database import Base, datetime_default_now, flag_default_false, intpk
 
@@ -14,11 +14,10 @@ user_torrent_association = sa.Table(
     sa.Column('torrent_id', sa.Integer, sa.ForeignKey('torrent.id'), primary_key=True),
 )
 
-
-torrent_content_association = sa.Table(
-    'torrent_content',
+user_content_association = sa.Table(
+    'user_content',
     Base.metadata,
-    sa.Column('torrent_id', sa.Integer, sa.ForeignKey('torrent.id'), primary_key=True),
+    sa.Column('user_id', sa.Integer, sa.ForeignKey('user.id'), primary_key=True),
     sa.Column('content_id', sa.Integer, sa.ForeignKey('content.id'), primary_key=True),
 )
 
@@ -37,6 +36,11 @@ class User(Base):
     torrents: orm.Mapped[list['Torrent']] = orm.relationship(
         'Torrent',
         secondary=user_torrent_association,
+        back_populates='users',
+    )
+    contents: orm.Mapped[list['Content']] = orm.relationship(
+        'Content',
+        secondary=user_content_association,
         back_populates='users',
     )
 
@@ -60,20 +64,16 @@ class Torrent(Base):
         secondary=user_torrent_association,
         back_populates='torrents',
     )
-    contents: orm.Mapped[list['Content']] = orm.relationship(
-        'Content',
-        secondary=torrent_content_association,
-        back_populates='torrents',
-    )
 
     __tablename__ = 'torrent'
     __table_args__ = (
-        sa.Index('idx_hash', 'hash', postgresql_using='hash'),
+        sa.Index('idx_torrent_hash', 'hash', postgresql_using='hash'),
     )
 
 
 class Content(Base):
     id: orm.Mapped[intpk]
+    index: orm.Mapped[int] = orm.mapped_column(sa.Integer)
     save_path: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text())
     file_name: orm.Mapped[str] = orm.mapped_column(sa.String(255))
     file_hash_md5: orm.Mapped[Optional[str]] = orm.mapped_column(sa.String(32))
@@ -81,15 +81,18 @@ class Content(Base):
     created_at: orm.Mapped[datetime_default_now]
     is_deleted: orm.Mapped[flag_default_false]
     ready: orm.Mapped[flag_default_false]
-    torrents: orm.Mapped[list[Torrent]] = orm.relationship(
-        'Torrent',
-        secondary=torrent_content_association,
+    torrent_id: orm.Mapped[int] = orm.mapped_column(
+        sa.Integer, ForeignKey('torrent.id', ondelete='CASCADE'), nullable=False
+    )
+    users: orm.Mapped[list[User]] = orm.relationship(
+        'User',
+        secondary=user_content_association,
         back_populates='contents',
     )
 
     __tablename__ = 'content'
     __table_args__ = (
-        sa.Index('idx_hash', 'file_hash_md5', postgresql_using='hash'),
+        sa.Index('idx_content_hash', 'file_hash_md5', postgresql_using='hash'),
     )
 
 

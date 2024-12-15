@@ -1,6 +1,6 @@
 from telegram import User as TGUser
 
-from app.entities.user.dao import UserDAO, UserTorrentDAO
+from app.entities.user.dao import UserDAO, UserTorrentDAO, UserContentDAO
 from app.entities.user.schema import UserSaveSchema
 from app.models import User
 
@@ -39,5 +39,21 @@ class UserTorrentManager:
         await self._dao.delete(user_id=user_id, torrent_id=torrent_id)
 
 
+class UserContentManager:
+    def __init__(self, dao: UserContentDAO = UserContentDAO):
+        self._dao = dao
+    
+    async def save(self, user_id: int, content_id: int) -> None:
+        if not await self._dao.find_one_or_none(user_id=user_id, content_id=content_id):
+            await self._dao.insert(user_id=user_id, content_id=content_id)
+    
+    async def get(self, user_id: int, content_id: int):
+        return await self._dao.find_one_or_none(user_id=user_id, content_id=content_id)
+
+    async def delete(self, user_id: int, content_id: int) -> None:
+        await self._dao.delete(user_id=user_id, content_id=content_id)
+
+
 user_manager = UserManager()
 user_torrent_manager = UserTorrentManager()
+user_content_manager = UserContentManager()

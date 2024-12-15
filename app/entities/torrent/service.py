@@ -11,6 +11,9 @@ class TorrentService:
         if not torrent_:
             torrent_ = await self._torrent_mng.save(torrent)
         return torrent_
+    
+    async def get_by_info_hash(self, info_hash: str) -> Torrent | None:
+        return await self._torrent_mng.get_by_info_hash(info_hash)
 
 
 torrent_service = TorrentService()

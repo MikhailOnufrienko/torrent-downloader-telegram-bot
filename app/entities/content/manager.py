@@ -6,11 +6,14 @@ class ContentManager:
     def __init__(self, dao: ContentDAO = ContentDAO):
         self._dao = dao
 
-    async def save_many(self, contents: list[dict]) -> Content:
+    async def save_many(self, contents: list[dict]) -> list[Content]:
         return await self._dao.insert_many(contents)
     
-    async def get_by_hash(self, file_hash_md5: str) -> list[Content]:
+    async def get_by_hash(self, file_hash_md5: str) -> Content:
         return await self._dao.find_one_or_none(file_hash_md5=file_hash_md5)
+    
+    async def get_by_torrent_id(self, torrent_id: int) -> list[Content]:
+        return await self._dao.find_all(torrent_id=torrent_id)
 
 
 content_manager = ContentManager()

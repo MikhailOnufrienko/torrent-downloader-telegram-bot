@@ -27,6 +27,7 @@ class Config(BaseSettings):
     QBITTORRENT_AUTH_USER: str = "admin"
     QBITTORRENT_AUTH_PASS: SecretStr
     SAVEPATH: str
+    FILES_PER_PAGE: int
 
     @property
     def postgres_dsn(self) -> str:

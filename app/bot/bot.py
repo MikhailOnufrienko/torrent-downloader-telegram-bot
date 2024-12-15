@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, MessageHandler, filters)
@@ -5,6 +7,7 @@ from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
 from app.bot.messages import Messages
 from app.bot.service import BotService, bot_service
 from app.config import config
+from app.bot.structures import FileIDIndexPath
 
 
 class Bot:
@@ -15,8 +18,7 @@ class Bot:
         self._bot_svc = bot_service
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        user = update.message.from_user
-        await self._bot_svc.save_user_if_not_exists(user)
+        user_in_tg = update.message.from_user
         keyboard = [[InlineKeyboardButton("Start", callback_data="start_pressed")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(Messages.hello, reply_markup=reply_markup)
@@ -26,7 +28,7 @@ class Bot:
         await query.answer()
         await query.edit_message_text(Messages.invitation)
 
-    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def handle_torrent(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = update.message
         if message.text and message.text.lower().startswith('magnet'):
             magnet_link = message.text
@@ -39,17 +41,60 @@ class Bot:
         else:
             await update.message.reply_text(Messages.invitation_after_error)
             return
-        await self._bot_svc.save_torrent_and_contents(update.message.from_user['id'], magnet_link, info_hash)
-        # if torrent:
-        #     torrent_files_hierarchy = await self._bot_svc.construct_torrent_files_hierarchy(info_hash)
-        #     config.logger.debug(torrent_files_hierarchy)
+        result = await self._bot_svc.save_torrent_and_contents(
+            update.message.from_user['id'], magnet_link, info_hash
+        )
+        if not result:
+            return
+        torrent, contents = result[0], result[1]
+        context.user_data['torrent'] = torrent  # Here the torrent is linked to the user.
+        files_id_index_path = [
+            FileIDIndexPath(id=content.id, index=content.index, path=content.file_name) for content in contents
+        ]
+        context.user_data['contents'] = files_id_index_path  # Here all contents of the torrent are linked to the user.
+        self._bot_svc.user_selections[torrent.id] = set()  # This set will store the contents the user will choose.
+        await self._bot_svc.send_page_with_files(files_id_index_path, update, context, page=0)
+    
+    async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        query = update.callback_query
+        data = query.data
+        contents = context.user_data['contents']
+        torrent_id = context.user_data['torrent'].id
+        if data.startswith("toggle_"):
+            # Обработка выбора строки
+            item_idx = int(data.split("_")[1])
+            item = contents[item_idx].path
+            # Обновляем выбор пользователя
+            if item in self._bot_svc.user_selections[torrent_id]:
+                self._bot_svc.user_selections[torrent_id].remove(item)
+            else:
+                self._bot_svc.user_selections[torrent_id].add(item)
+            await self._bot_svc.send_page_with_files(contents, update, context, page=item_idx // config.FILES_PER_PAGE)
+        elif data.startswith("page_"):
+            # Обработка переключения страницы
+            page = int(data.split("_")[1])
+            await self._bot_svc.send_page_with_files(contents, update, context, page=page)
+        elif data == 'select all':
+            self._bot_svc.user_selections[torrent_id] = set(contents)
+        elif data == "done":
+            # Завершение выбора
+            await self._bot_svc.save_user_choice(context)
+            selected_items = self._bot_svc.user_selections.get(torrent_id, set())
+            if len(selected_items) == len(contents):
+                await query.edit_message_text(text=Messages.all_files_selected)
+            elif not selected_items:
+                await query.edit_message_text(text=Messages.no_file_selected)
+            else:
+                text = f'{len(selected_items)} {Messages.files_selected}'
+                await query.edit_message_text(text=text)
 
 
 def main():
     bot_instance = Bot()
     application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", bot_instance.start))
-    application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_message))
+    application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_torrent))
+    application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=r'^(toggle_\d+|page_\d+|done)$'))
     application.add_handler(CallbackQueryHandler(bot_instance.button))
     application.run_polling()
 

@@ -14,6 +14,14 @@ class TorrentService:
     
     async def get_by_info_hash(self, info_hash: str) -> Torrent | None:
         return await self._torrent_mng.get_by_info_hash(info_hash)
+    
+    async def get_many(self, filter_by: dict) -> list[Torrent]:
+        return await self._torrent_mng.get_many(filter_by)
+    
+    async def update_torrent(self, data: dict, torrent_id: int) -> Torrent | None:
+        torrent = await self._torrent_mng.get(torrent_id)
+        if torrent:
+            return await self._torrent_mng.update(data, torrent_id)
 
 
 torrent_service = TorrentService()

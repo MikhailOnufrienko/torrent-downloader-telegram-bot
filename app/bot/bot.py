@@ -1,6 +1,7 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, MessageHandler, filters)
+from telegram.request import HTTPXRequest
 
 from app.bot.messages import Messages
 from app.bot.service import BotService, bot_service
@@ -8,7 +9,18 @@ from app.config import config
 from app.bot.structures import FileIDIndexPath
 
 
-class Bot:
+class CustomHTTPXRequest(HTTPXRequest):
+    def __init__(self, base_url: str, **kwargs):
+        # Инициализация родительского класса с аргументами
+        super().__init__(**kwargs)
+        self.base_url = base_url
+
+    # Переопределение метода build_url
+    def build_url(self, endpoint: str) -> str:
+        return f"{self.base_url}/{endpoint.lstrip('/')}"
+
+
+class MainBot:
     def __init__(
         self,
         bot_service: BotService = bot_service,
@@ -24,6 +36,8 @@ class Bot:
         query = update.callback_query
         await query.answer()
         await query.edit_message_text(Messages.invitation)
+        tg_user = update.effective_user
+        await self._bot_svc.save_user_if_not_exists(tg_user)
 
     async def handle_torrent(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = update.message
@@ -71,9 +85,10 @@ class Bot:
             # Switching between pages.
             page = int(data.split("_")[1])
             await self._bot_svc.send_page_with_files(contents, update, context, page=page)
-        elif data == 'select all':
-            self._bot_svc.user_selections[torrent_id] = set(contents)
-        elif data == "done":
+        elif data == 'select_all':
+            self._bot_svc.user_selections[torrent_id] = {file.path for file in contents}
+            await self._bot_svc.send_page_with_files(contents, update, context, page=0)
+        elif data == 'done':
             # Selection is done.
             selected_items = self._bot_svc.user_selections.get(torrent_id, set())
             if len(selected_items) == len(contents):
@@ -87,13 +102,18 @@ class Bot:
 
 
 def main():
-    bot_instance = Bot()
-    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
+    bot_instance = MainBot()
+    custom_base_url = "http://localhost:8081/"
+    request = CustomHTTPXRequest(base_url=custom_base_url)
+    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).request(request).build()
     application.add_handler(CommandHandler("start", bot_instance.start))
     application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_torrent))
-    application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=r'^(toggle_\d+|page_\d+|done)$'))
+    application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=r'^(toggle_\d+|page_\d+|select_all|done)$'))
     application.add_handler(CallbackQueryHandler(bot_instance.button))
-    application.run_polling()
+    application.run_polling(read_timeout=30, write_timeout=30)
+    # repo = Application.builder().token(config.TELEGRAM_REPO_BOT_TOKEN).build()
+    # repo.run_polling()
+
 
 if __name__ == "__main__":
-    main()
+  main()

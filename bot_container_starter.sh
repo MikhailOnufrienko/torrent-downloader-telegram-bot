@@ -14,3 +14,5 @@ PASSWORD=$(
 )
 
 echo "QBITTORRENT_AUTH_PASS=$PASSWORD" >> $ENV_FILE_PATH
+
+# docker compose up --build -d bot

@@ -23,10 +23,12 @@ class Config(BaseSettings):
     POSTGRES_DSN: PostgresDsn = 'postgresql+asyncpg://postgres:postgres@localhost:5432/torrent_dl'
     MAXIMUM_TORRENTS_TO_SEND: int = 16
     TELEGRAM_BOT_TOKEN: str
+    TELEGRAM_REPO_CHAT_ID: str
     QBITTORRENT_CLIENT_DSN: str = "http://localhost:8080"
     QBITTORRENT_AUTH_USER: str = "admin"
     QBITTORRENT_AUTH_PASS: SecretStr
-    SAVEPATH: str
+    QBIT_SAVEPATH: str
+    HOST_SAVEPATH: str
     FILES_PER_PAGE: int
 
     @property

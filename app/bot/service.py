@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import re
+from datetime import datetime
 from typing import BinaryIO
 
 import bencodepy
@@ -9,6 +10,7 @@ from telegram import User as TGUser
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
+from loguru import logger
 
 from app.client.qbittorrent import TorrentClient, torrent_client
 from app.config import config
@@ -84,7 +86,7 @@ class BotService:
         try:
             torrent_files = self._torrent_cli.get_torrent_files(info_hash)
         except HTTPError:
-            self._torrent_cli.download_from_link(magnet_link, savepath=config.SAVEPATH)
+            self._torrent_cli.download_from_link(magnet_link, savepath=config.QBIT_SAVEPATH)
             await asyncio.sleep(5)
             torrent_files = self._torrent_cli.get_torrent_files(info_hash)
         contents = await self._content_svc.save_many_if_not_exists(torrent_files, torrent.id)
@@ -94,7 +96,7 @@ class BotService:
         existing_torrent = await self._torrent_svc.get_by_info_hash(info_hash)
         if existing_torrent:
             return {'name': existing_torrent.title, 'total_size': existing_torrent.size}
-        self._torrent_cli.download_from_link(magnet_link, savepath=config.SAVEPATH)
+        self._torrent_cli.download_from_link(magnet_link, savepath=config.QBIT_SAVEPATH)
         await asyncio.sleep(5)
         return self._torrent_cli.get_torrent(info_hash)
 
@@ -127,6 +129,7 @@ class BotService:
             nav_buttons.append(InlineKeyboardButton("➡️", callback_data=f"page_{page + 1}"))
         if nav_buttons:
             keyboard.append(nav_buttons)
+        keyboard.append([InlineKeyboardButton(f"Select all {len(files)} files", callback_data="select_all")])
         keyboard.append([InlineKeyboardButton("✅ Done", callback_data="done")])
         if update.callback_query:
             await update.callback_query.edit_message_text(
@@ -144,12 +147,17 @@ class BotService:
         content_ids = [content.id for content in contents if content.path in self.user_selections[torrent.id]]
         for content_id in content_ids:
             await self._user_content_svc.save_association(user.id, content_id)
-        self._torrent_cli.download_from_link(torrent.magnet_link, savepath=config.SAVEPATH)
+        self._torrent_cli.download_from_link(torrent.magnet_link, savepath=config.QBIT_SAVEPATH)
         discarded_file_indexes = [  # The files the user doesn't want to download.
             content.index for content in contents if not content.path in self.user_selections[torrent.id]
         ]
         for idx in discarded_file_indexes:
             self._torrent_cli.set_file_priority(torrent.hash, idx, 0)
+        updated_torrent = await self._torrent_svc.update_torrent(
+            {'is_task_sent': True, 'task_sent_at': datetime.now().replace(microsecond=0), 'is_processing': True},
+            torrent.id
+        )
+        logger.debug(f'Torrent sent to download: id {torrent.id}.')
 
 
 bot_service = BotService()

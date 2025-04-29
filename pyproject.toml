@@ -16,6 +16,9 @@ loguru = "^0.7.2"
 bencodepy = "^0.9.5"
 asyncpg = "^0.30.0"
 python-qbittorrent = "^0.4.3"
+celery = {extras = ["amqp"], version = "^5.4.0"}
+kombu = "^5.4.2"
+amqp = "^5.3.1"
 
 
 [build-system]

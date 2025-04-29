@@ -14,6 +14,9 @@ class ContentManager:
     
     async def get_by_torrent_id(self, torrent_id: int) -> list[Content]:
         return await self._dao.find_all(torrent_id=torrent_id)
+    
+    async def update(self, data: dict, torrent_id: int, index: int) -> Content:
+        return await self._dao.update(data, torrent_id=torrent_id, index=index)
 
 
 content_manager = ContentManager()

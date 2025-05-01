@@ -2,7 +2,7 @@ services:
   bot:
     build:
       context: .
-    container_name: torrents_tg_bot
+    container_name: torrents-tg-bot-cont
     env_file:
       - .env
     volumes:
@@ -12,18 +12,22 @@ services:
       alembic upgrade head &&
       python3.12 -m app.bot.bot
       "
+    networks:
+      - torrents-bot-network
     depends_on:
       - db
       - qbittorrent
   watchdog:
     build:
       context: .
-    container_name: torrents_watchdog
+    container_name: torrents-watchdog-cont
     env_file:
       - .env
     volumes:
       - ./.env:/.env
     command: ["python3.12", "-m", "app.tasks.service"]
+    networks:
+      - torrents-bot-network
     depends_on:
       - bot
       - db
@@ -40,7 +44,7 @@ services:
   #   command: [ "celery", "-A", "app.celery_queue", "beat", "--loglevel=INFO", "-Q", "watchdog"]
   db:
     image: postgres:latest
-    container_name: torrent_dl
+    container_name: torrent-postgres-cont
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -49,9 +53,11 @@ services:
       - 5432:5432
     volumes:
       - pgdata:/var/lib/postgresql/data
+    networks:
+      - torrents-bot-network
   qbittorrent:
     image: linuxserver/qbittorrent:latest
-    container_name: qbittorrent
+    container_name: qbittorrent-cont
     environment:
       - PUID=0
       - PGID=0
@@ -64,6 +70,10 @@ services:
     ports:
       - 8080:8080
       - 6881:6881
+    networks:
+      - torrents-bot-network
 volumes:
   pgdata:
     driver: local
+networks:
+  torrents-bot-network:

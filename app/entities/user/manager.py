@@ -34,6 +34,14 @@ class UserTorrentManager:
     
     async def get(self, user_id: int, torrent_id: int):
         return await self._dao.find_one_or_none(user_id=user_id, torrent_id=torrent_id)
+    
+    async def get_many(self, user_id: int | None = None, torrent_id: int | None = None):
+        """Either parameter must be None!"""
+        if user_id:
+            return await self._dao.find_all_in_secondary(user_id=user_id)
+        elif torrent_id:
+            return await self._dao.find_all_in_secondary(torrent_id=torrent_id)
+
 
     async def delete(self, user_id: int, torrent_id: int) -> None:
         await self._dao.delete(user_id=user_id, torrent_id=torrent_id)
@@ -49,6 +57,13 @@ class UserContentManager:
     
     async def get(self, user_id: int, content_id: int):
         return await self._dao.find_one_or_none(user_id=user_id, content_id=content_id)
+    
+    async def get_many(self, user_id: int | None = None, content_id: int | None = None):
+        """Either parameter must be None!"""
+        if user_id:
+            return await self._dao.find_all_in_secondary(user_id=user_id)
+        elif content_id:
+            return await self._dao.find_all_in_secondary(content_id=content_id)
 
     async def delete(self, user_id: int, content_id: int) -> None:
         await self._dao.delete(user_id=user_id, content_id=content_id)

@@ -50,8 +50,7 @@ class BotService:
     @staticmethod
     def generate_hash_and_magnet_link_from_file(file: BinaryIO) -> tuple[str, str]:
         """Generate an info hash and a magnet link from the given torrent file."""
-        with open(file, 'rb') as f:
-            torrent_data = bencodepy.decode(f.read())
+        torrent_data = bencodepy.decode(file.read())
         info = torrent_data[b"info"]
         info_hash = hashlib.sha1(bencodepy.encode(info)).hexdigest()
         magnet_link = f"magnet:?xt=urn:btih:{info_hash}"
@@ -143,16 +142,16 @@ class BotService:
     async def save_and_download_user_choice(self, context: CallbackContext) -> None:
         user = await self._user_svc.get_by_tg_id(context._user_id)
         torrent = context.user_data['torrent']
-        contents: list[FileIDIndexPath] = context.user_data['contents']
-        content_ids = [content.id for content in contents if content.path in self.user_selections[torrent.id]]
-        for content_id in content_ids:
-            await self._user_content_svc.save_association(user.id, content_id)
         self._torrent_cli.download_from_link(torrent.magnet_link, savepath=config.QBIT_SAVEPATH)
         discarded_file_indexes = [  # The files the user doesn't want to download.
             content.index for content in contents if not content.path in self.user_selections[torrent.id]
         ]
         for idx in discarded_file_indexes:
             self._torrent_cli.set_file_priority(torrent.hash, idx, 0)
+        contents: list[FileIDIndexPath] = context.user_data['contents']
+        content_ids = [content.id for content in contents if content.path in self.user_selections[torrent.id]]
+        for content_id in content_ids:
+            await self._user_content_svc.save_association(user.id, content_id)
         updated_torrent = await self._torrent_svc.update_torrent(
             {'is_task_sent': True, 'task_sent_at': datetime.now().replace(microsecond=0), 'is_processing': True},
             torrent.id

@@ -1,3 +1,4 @@
+from io import BytesIO
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
                           ContextTypes, MessageHandler, filters)
@@ -41,14 +42,17 @@ class MainBot:
 
     async def handle_torrent(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = update.message
+        print("Chat ID:", message.chat.id)
         if message.text and message.text.lower().startswith('magnet'):
             magnet_link = message.text
             info_hash = None
             await update.message.reply_text(Messages.link_received)
         elif message.document:
-            file = message.document
             await update.message.reply_text(Messages.file_received)
-            info_hash, magnet_link = self._bot_svc.generate_hash_and_magnet_link_from_file(file)
+            file = await message.document.get_file()
+            byte_array = await file.download_as_bytearray()
+            byte_stream = BytesIO(byte_array)
+            info_hash, magnet_link = self._bot_svc.generate_hash_and_magnet_link_from_file(byte_stream)
         else:
             await update.message.reply_text(Messages.invitation_after_error)
             return

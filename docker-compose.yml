@@ -7,6 +7,9 @@ services:
       - .env
     volumes:
       - ./.env:/.env
+      - ./torrent_downloads:/torrent_downloads
+    ports:
+      - 8081:8081
     command: >
       sh -c "
       alembic upgrade head &&
@@ -17,31 +20,29 @@ services:
     depends_on:
       - db
       - qbittorrent
-  watchdog:
+  watchdog-celery:
     build:
       context: .
-    container_name: torrents-watchdog-cont
     env_file:
       - .env
     volumes:
       - ./.env:/.env
-    command: ["python3.12", "-m", "app.tasks.service"]
+      - ./torrent_downloads:/torrent_downloads
+    restart: always
+    container_name: torrents-watchdog-celery-cont
     networks:
       - torrents-bot-network
-    depends_on:
-      - bot
-      - db
-      - qbittorrent
-  # beat:
-  #   build:
-  #     context: .
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./.env:/.env
-  #   restart: always
-  #   container_name: torrents_beat
-  #   command: [ "celery", "-A", "app.celery_queue", "beat", "--loglevel=INFO", "-Q", "watchdog"]
+    command: [ "celery", "-A", "app.celery_queue", "worker", "--loglevel=INFO", "--pool=prefork", "--concurrency=1", "--prefetch-multiplier=1"]
+  beat:
+    build:
+      context: .
+    env_file:
+      - .env
+    container_name: torrents-beat-cont
+    command: [ "celery", "-A", "app.celery_queue", "beat", "--loglevel=INFO"]
+    networks:
+      - torrents-bot-network
+
   db:
     image: postgres:latest
     container_name: torrent-postgres-cont
@@ -66,10 +67,21 @@ services:
       - TORRENTING_PORT=6881
     volumes:
       - /home/mikhail/.config/qBittorrent:/config
-      - /home/mikhail/Downloads:/downloads
+      - ./torrent_downloads:/downloads
     ports:
       - 8080:8080
       - 6881:6881
+    networks:
+      - torrents-bot-network
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - torrents-bot-network
 volumes:

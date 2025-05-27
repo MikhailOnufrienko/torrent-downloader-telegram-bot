@@ -3,7 +3,7 @@ import sys
 from typing import Literal
 
 from loguru import logger
-from pydantic import PostgresDsn, SecretStr
+from pydantic import AmqpDsn, Field, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
@@ -21,9 +21,13 @@ class Config(BaseSettings):
 
     MODE: Literal['DEV', 'PROD', 'TEST'] = 'DEV'
     POSTGRES_DSN: PostgresDsn = 'postgresql+asyncpg://postgres:postgres@localhost:5432/torrent_dl'
+    AMQP_DSN: AmqpDsn = Field(default="amqp://guest:guest@rabbitmq:5672//")
     MAXIMUM_TORRENTS_TO_SEND: int = 16
     TELEGRAM_BOT_TOKEN: str
     TELEGRAM_REPO_CHAT_ID: str
+    TELEGRAM_API_ID: int
+    TELEGRAM_API_HASH: str
+    TELEGRAM_BOT_URL: str
     QBITTORRENT_CLIENT_DSN: str = "http://localhost:8080"
     QBITTORRENT_AUTH_USER: str = "admin"
     QBITTORRENT_AUTH_PASS: SecretStr
@@ -36,6 +40,10 @@ class Config(BaseSettings):
         if self.is_test_mode:
             return self.POSTGRES_DSN.unicode_string() + "_test"
         return self.POSTGRES_DSN.unicode_string()
+    
+    @property
+    def amqp_dsn(self) -> str:
+        return self.AMQP_DSN.unicode_string()
     
     @property
     def is_test_mode(self) -> bool:

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Extract password of the qbittorrent client and write it down to the .env file.
 
-CONTAINER_NAME=qbittorrent
+CONTAINER_NAME=qbittorrent-cont
 ENV_FILE_PATH=.env
 
 PASSWORD=$(
@@ -15,4 +15,4 @@ PASSWORD=$(
 
 echo "QBITTORRENT_AUTH_PASS=$PASSWORD" >> $ENV_FILE_PATH
 
-# docker compose up --build -d bot
+docker compose up --build -d db rabbitmq bot watchdog-celery beat

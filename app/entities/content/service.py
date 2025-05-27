@@ -7,6 +7,9 @@ class ContentService:
 
     ):
         self._content_mng = content_manager
+    
+    async def get(self, content_id: int) -> Content | None:
+        return await self._content_mng.get(content_id)
 
     async def save_many_if_not_exists(self, torrent_files: dict, torrent_id: int) -> list[Content]:
         contents = await self._content_mng.get_by_torrent_id(torrent_id)

@@ -5,7 +5,7 @@ from app.entities.user.manager import (
     UserManager, UserTorrentManager, user_manager, user_torrent_manager,
     UserContentManager, user_content_manager,
 )
-from app.models import User
+from app.models import User, user_content_association, user_torrent_association
 
 
 class UserService:
@@ -29,6 +29,9 @@ class UserTorrentService:
     def __init__(self, user_torrent_manager: UserTorrentManager = user_torrent_manager):
         self._user_torrent_mng = user_torrent_manager
     
+    async def find_associations_by_torrent_id(self, torrent_id: int) -> user_torrent_association:
+        return await self._user_torrent_mng.get_many(torrent_id=torrent_id)
+    
     async def save_association(self, user_id: int, torrent_id: int) -> None:
         await self._user_torrent_mng.save(user_id, torrent_id)
     
@@ -39,6 +42,9 @@ class UserTorrentService:
 class UserContentService:
     def __init__(self, user_content_manager: UserContentManager = user_content_manager):
         self._user_content_mng = user_content_manager
+    
+    async def find_associations_by_user_id(self, user_id: int) -> user_content_association:
+        return await self._user_content_mng.get_many(user_id=user_id)
     
     async def save_association(self, user_id: int, content_id: int) -> None:
         await self._user_content_mng.save(user_id, content_id)

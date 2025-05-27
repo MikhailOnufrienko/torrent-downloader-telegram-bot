@@ -9,6 +9,9 @@ class ContentManager:
     async def save_many(self, contents: list[dict]) -> list[Content]:
         return await self._dao.insert_many(contents)
     
+    async def get(self, content_id: int) -> Content | None:
+        return await self._dao.find_one_or_none(id=content_id)
+    
     async def get_by_hash(self, file_hash_md5: str) -> Content:
         return await self._dao.find_one_or_none(file_hash_md5=file_hash_md5)
     

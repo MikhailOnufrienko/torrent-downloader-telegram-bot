@@ -1,7 +1,7 @@
 from abc import ABC
 from typing import Any, Optional, TypeVar
 
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import delete, insert, select, update, and_
 from sqlalchemy.engine.result import ChunkedIteratorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase
@@ -74,5 +74,24 @@ class BaseDAO(ABC):
                 query = select(cls.model).filter_by(**filter_by)
                 result = await session.execute(query)
                 return result.scalar_one_or_none()
+            except IntegrityError as e:
+                raise Exception(e)
+    
+    @classmethod
+    async def find_all_in_secondary(cls, limit: Optional[int] = None, offset: Optional[int] = None, **filter_by) -> list[T]:
+        cls._check_model()
+        query = select(cls.model)
+        if filter_by:
+            conditions = [getattr(cls.model.c, key) == value for key, value in filter_by.items()]
+            query = query.where(and_(*conditions))
+        if limit:
+            query = query.limit(limit)
+        if offset:
+            query = query.offset(offset)
+        async with async_session() as session:
+            try:
+                result = await session.execute(query)
+                rows = result.mappings().all()
+                return rows
             except IntegrityError as e:
                 raise Exception(e)

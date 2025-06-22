@@ -12,7 +12,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 from loguru import logger
 
-from app.client.qbittorrent import TorrentClient, torrent_client
+from app.torrent_client.qbittorrent import TorrentClient, torrent_client
 from app.config import config
 from app.downloader.service import DownloadService, download_service
 from app.entities.content.service import ContentService, content_service
@@ -20,7 +20,7 @@ from app.entities.torrent.service import TorrentService, torrent_service
 from app.entities.user.service import (UserService, user_service, UserTorrentService,
                                        user_torrent_service, UserContentService, user_content_service)
 from app.models import Content, Torrent, User
-from app.bot.messages import Messages
+from app.common.messages import Messages
 from app.bot.structures import FileIDIndexPath
 
 
@@ -143,12 +143,12 @@ class BotService:
         user = await self._user_svc.get_by_tg_id(context._user_id)
         torrent = context.user_data['torrent']
         self._torrent_cli.download_from_link(torrent.magnet_link, savepath=config.QBIT_SAVEPATH)
+        contents: list[FileIDIndexPath] = context.user_data['contents']
         discarded_file_indexes = [  # The files the user doesn't want to download.
             content.index for content in contents if not content.path in self.user_selections[torrent.id]
         ]
         for idx in discarded_file_indexes:
             self._torrent_cli.set_file_priority(torrent.hash, idx, 0)
-        contents: list[FileIDIndexPath] = context.user_data['contents']
         content_ids = [content.id for content in contents if content.path in self.user_selections[torrent.id]]
         for content_id in content_ids:
             await self._user_content_svc.save_association(user.id, content_id)
@@ -157,6 +157,16 @@ class BotService:
             torrent.id
         )
         logger.debug(f'Torrent sent to download: id {torrent.id}.')
+
+    async def set_user_unblocked(self, update: Update) -> dict:
+        user_tg_id = update.effective_user.id
+        user = await self._user_svc.get_by_tg_id(user_tg_id)
+        if not user:
+            return {"success": False, "message": f"! ERROR ! No user found with tg ID {user_tg_id}."}
+        user_updated = await self._user_svc.set_user_unblocked(user.id)
+        if user_updated:
+            return {"success": True, "message": f"* User {user.id} is unblocked."}
+        return {"success": False, "message": f"! ERROR ! Failed to set user {user.id} unblocked."}
 
 
 bot_service = BotService()

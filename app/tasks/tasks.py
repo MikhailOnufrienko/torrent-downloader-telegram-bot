@@ -1,7 +1,7 @@
 import asyncio
 
 from app.celery_queue import celery_app
-from app.tasks.service import watch_for_downloads
+from app.watchdog.watchdog import watch_for_downloads
 
 
 @celery_app.task

@@ -1,5 +1,5 @@
 from app.downloader.downloader import Downloader
-from app.client.qbittorrent import TorrentClient, torrent_client
+from app.torrent_client.qbittorrent import TorrentClient, torrent_client
 
 class DownloadService:
     def __init__(

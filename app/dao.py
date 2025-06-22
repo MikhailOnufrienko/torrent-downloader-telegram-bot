@@ -1,9 +1,10 @@
 from abc import ABC
 from typing import Any, Optional, TypeVar
 
+from loguru import logger
 from sqlalchemy import delete, insert, select, update, and_
 from sqlalchemy.engine.result import ChunkedIteratorResult
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import DeclarativeBase
 
 from app.database import async_session
@@ -21,14 +22,17 @@ class BaseDAO(ABC):
 
     @staticmethod
     async def _execute_query(query) -> ChunkedIteratorResult:
-        async with async_session() as session:
-            try:
-                result = await session.execute(query)
-                await session.commit()
-                return result
-            except IntegrityError as e:
-                await session.rollback()
-                raise Exception(e)
+        try:
+            async with async_session() as session:
+                try:
+                    result = await session.execute(query)
+                    await session.commit()
+                    return result
+                except IntegrityError as e:
+                    await session.rollback()
+                    raise Exception(e)
+        except (OSError, OperationalError) as e:
+            logger.error(f"ERROR: CONNECTION TO DB FAILED! Stacktrace: {e}")
 
     @classmethod
     async def insert(cls, **kwargs) -> T:

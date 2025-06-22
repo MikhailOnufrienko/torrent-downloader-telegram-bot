@@ -1,6 +1,6 @@
 from typing import Optional
 
-from app.client.qbittorrent import torrent_client, TorrentClient
+from app.torrent_client.qbittorrent import torrent_client, TorrentClient
 
 
 class Downloader:
@@ -12,4 +12,5 @@ class Downloader:
         self._filename: Optional[str] = None
 
     def __call__(self, magnet_link: str):
-        torrent_files = self._download_files(torrent)
+        # torrent_files = self._download_files(torrent)
+        pass

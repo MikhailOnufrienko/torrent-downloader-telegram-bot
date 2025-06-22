@@ -3,7 +3,7 @@ import sys
 from typing import Literal
 
 from loguru import logger
-from pydantic import AmqpDsn, Field, PostgresDsn, SecretStr
+from pydantic import AmqpDsn, Field, HttpUrl, PostgresDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
@@ -20,6 +20,7 @@ class Config(BaseSettings):
     model_config = model_config
 
     MODE: Literal['DEV', 'PROD', 'TEST'] = 'DEV'
+    BOT_URL: HttpUrl
     POSTGRES_DSN: PostgresDsn = 'postgresql+asyncpg://postgres:postgres@localhost:5432/torrent_dl'
     AMQP_DSN: AmqpDsn = Field(default="amqp://guest:guest@rabbitmq:5672//")
     MAXIMUM_TORRENTS_TO_SEND: int = 16

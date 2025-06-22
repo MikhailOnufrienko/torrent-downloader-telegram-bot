@@ -3,6 +3,7 @@ services:
     build:
       context: .
     container_name: torrents-tg-bot-cont
+    # user: "${UID}:${GID}"
     env_file:
       - .env
     volumes:
@@ -23,6 +24,7 @@ services:
   watchdog-celery:
     build:
       context: .
+    # user: "${UID}:${GID}"
     env_file:
       - .env
     volumes:
@@ -59,6 +61,7 @@ services:
   qbittorrent:
     image: linuxserver/qbittorrent:latest
     container_name: qbittorrent-cont
+    # user: "${UID}:${GID}"
     environment:
       - PUID=0
       - PGID=0

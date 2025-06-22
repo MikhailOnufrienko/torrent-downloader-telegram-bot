@@ -1,3 +1,4 @@
+from typing import Union
 from telegram import User as TGUser
 
 from app.entities.user.dao import UserDAO, UserTorrentDAO, UserContentDAO
@@ -17,11 +18,17 @@ class UserManager:
             last_name=user.last_name,
             is_bot=user.is_bot,
             language_code=user.language_code,
-        )
-        return await self._dao.insert(**user.model_dump())
+        )  # type: ignore
+        return await self._dao.insert(**user.model_dump())  # type: ignore
     
     async def get_by_tg_id(self, user_tg_id: int) -> User | None:
         return await self._dao.find_one_or_none(tg_id=user_tg_id)
+    
+    async def get(self, user_id: int) -> User | None:
+        return await self._dao.find_one_or_none(id=user_id)
+    
+    async def update(self, user_id: int, payload: dict) -> User:
+        return await self._dao.update(payload, id=user_id)
 
 
 class UserTorrentManager:
@@ -43,8 +50,12 @@ class UserTorrentManager:
             return await self._dao.find_all_in_secondary(torrent_id=torrent_id)
 
 
-    async def delete(self, user_id: int, torrent_id: int) -> None:
-        await self._dao.delete(user_id=user_id, torrent_id=torrent_id)
+    async def delete(self, user_id: int, torrent_id: int | None = None) -> int:
+        if torrent_id:
+            rows_affected = await self._dao.delete(user_id=user_id, torrent_id=torrent_id)
+            return rows_affected
+        rows_affected = await self._dao.delete(user_id=user_id)
+        return rows_affected
 
 
 class UserContentManager:
@@ -62,11 +73,16 @@ class UserContentManager:
         """Either parameter must be None!"""
         if user_id:
             return await self._dao.find_all_in_secondary(user_id=user_id)
-        elif content_id:
+        if content_id:
             return await self._dao.find_all_in_secondary(content_id=content_id)
 
-    async def delete(self, user_id: int, content_id: int) -> None:
-        await self._dao.delete(user_id=user_id, content_id=content_id)
+    async def delete(self, user_id: int, content_id: int) -> int:
+        rows_affected = await self._dao.delete(user_id=user_id, content_id=content_id)
+        return rows_affected
+    
+    async def delete_many(self, user_id: int, content_ids: list[int]) -> int:
+        rows_affected = await self._dao.delete_many_specific(user_id, content_ids)
+        return rows_affected
 
 
 user_manager = UserManager()

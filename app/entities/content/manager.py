@@ -20,6 +20,9 @@ class ContentManager:
     
     async def update(self, data: dict, torrent_id: int, index: int) -> Content:
         return await self._dao.update(data, torrent_id=torrent_id, index=index)
+    
+    async def delete_many(self, filter_by: dict) -> int:
+        return await self._dao.delete(**filter_by)
 
 
 content_manager = ContentManager()

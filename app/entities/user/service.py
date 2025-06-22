@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from telegram import User as TGUser
 
 from app.config import config
@@ -23,6 +25,21 @@ class UserService:
     
     async def get_by_tg_id(self, tg_id: int) -> User | None:
         return await self._user_mng.get_by_tg_id(tg_id)
+    
+    async def get(self, user_id: int) -> User | None:
+        return await self._user_mng.get(user_id)
+    
+    async def set_user_unblocked(self, user_id: int) -> User:
+        payload = {"is_blocked": False, "updated_at": datetime.now().replace(microsecond=0)}
+        return await self._user_mng.update(user_id, payload)
+    
+    async def set_user_blocked(self, user_id: int) -> User:
+        payload = {"is_blocked": True, "is_unblocking_message_sent": False, "updated_at": datetime.now().replace(microsecond=0)}
+        return await self._user_mng.update(user_id, payload)
+    
+    async def set_user_is_unblocking_message_sent(self, user_id: int) -> User:
+        payload = {"is_unblocking_message_sent": True, "updated_at": datetime.now().replace(microsecond=0)}
+        return await self._user_mng.update(user_id, payload)
 
 
 class UserTorrentService:
@@ -35,8 +52,13 @@ class UserTorrentService:
     async def save_association(self, user_id: int, torrent_id: int) -> None:
         await self._user_torrent_mng.save(user_id, torrent_id)
     
-    async def delete_association(self, user_id: int, torrent_id: int) -> None:
-        await self._user_torrent_mng.delete(user_id, torrent_id)
+    async def delete_association(self, user_id: int, torrent_id: int) -> int:
+        rows_affected = await self._user_torrent_mng.delete(user_id, torrent_id)
+        return rows_affected
+
+    async def delete_associations(self, user_id: int) -> int:
+        rows_affected = await self._user_torrent_mng.delete(user_id)
+        return rows_affected
 
 
 class UserContentService:
@@ -46,11 +68,19 @@ class UserContentService:
     async def find_associations_by_user_id(self, user_id: int) -> user_content_association:
         return await self._user_content_mng.get_many(user_id=user_id)
     
+    async def find_associations_by_content_id(self, content_id: int) -> user_content_association:
+        return await self._user_content_mng.get_many(content_id=content_id)
+    
     async def save_association(self, user_id: int, content_id: int) -> None:
         await self._user_content_mng.save(user_id, content_id)
     
-    async def delete_association(self, user_id: int, content_id: int) -> None:
-        await self._user_content_mng.delete(user_id, content_id)
+    async def delete_association(self, user_id: int, content_id: int) -> int:
+        rows_affected = await self._user_content_mng.delete(user_id, content_id)
+        return rows_affected
+    
+    async def delete_associations(self, user_id: int, content_ids: list[int]) -> int:
+        rows_affected = await self._user_content_mng.delete_many(user_id, content_ids)
+        return rows_affected
 
 
 user_service = UserService()

@@ -1,3 +1,4 @@
+from app.config import config
 from app.entities.content.manager import ContentManager, content_manager
 from app.models import Content
 
@@ -15,7 +16,12 @@ class ContentService:
         contents = await self._content_mng.get_by_torrent_id(torrent_id)
         if not contents:    
             contents_of_torrent = [
-                {'index': file['index'], 'torrent_id': torrent_id, 'file_name': file['name'], 'size': file['size']}
+                {
+                    'index': file['index'],
+                    'torrent_id': torrent_id,
+                    'file_name': file['name'],
+                    'size': file['size'],
+                }
                 for file in torrent_files
             ]
             contents = await self._content_mng.save_many(contents_of_torrent)
@@ -26,6 +32,9 @@ class ContentService:
     
     async def update(self, data: dict, torrent_id: int, index: int) -> Content:
         return await self._content_mng.update(data, torrent_id, index)
+    
+    async def delete_by_torrent_id(self, torrent_id: int) -> int:
+        return await self._content_mng.delete_many({"torrent_id": torrent_id})
 
 
 content_service = ContentService()

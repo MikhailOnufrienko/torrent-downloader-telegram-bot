@@ -1,10 +1,12 @@
 from io import BytesIO
+
+from loguru import logger
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
-                          ContextTypes, MessageHandler, filters)
+from telegram.ext import (CallbackQueryHandler, CommandHandler,
+                          ContextTypes, MessageHandler, filters, ApplicationBuilder)
 from telegram.request import HTTPXRequest
 
-from app.bot.messages import Messages
+from app.common.messages import Messages, error_messages
 from app.bot.service import BotService, bot_service
 from app.config import config
 from app.bot.structures import FileIDIndexPath
@@ -21,12 +23,19 @@ class CustomHTTPXRequest(HTTPXRequest):
         return f"{self.base_url}/{endpoint.lstrip('/')}"
 
 
+custom_base_url = config.BOT_URL.unicode_string()
+request = CustomHTTPXRequest(base_url=custom_base_url)
+application = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).request(request).build()
+
+
 class MainBot:
     def __init__(
         self,
         bot_service: BotService = bot_service,
+        bot = application.bot,
     ):
         self._bot_svc = bot_service
+        self._bot = bot
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         keyboard = [[InlineKeyboardButton("Start", callback_data="start_pressed")]]
@@ -42,7 +51,6 @@ class MainBot:
 
     async def handle_torrent(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = update.message
-        print("Chat ID:", message.chat.id)
         if message.text and message.text.lower().startswith('magnet'):
             magnet_link = message.text
             info_hash = None
@@ -72,7 +80,16 @@ class MainBot:
     
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
+        await query.answer()
         data = query.data
+        if data == "message_sent":
+            result = await self._bot_svc.set_user_unblocked(update)
+            if not result["success"]:
+                logger.error(result["message"])
+                await query.message.reply_text("Ой! Что-то пошло не так...")
+                return
+            await query.message.reply_text("Спасибо! Сообщение принято.")
+            return
         contents = context.user_data['contents']
         torrent_id = context.user_data['torrent'].id
         if data.startswith("toggle_"):
@@ -103,21 +120,26 @@ class MainBot:
                 text = f'{len(selected_items)} {Messages.files_selected}'
                 await query.edit_message_text(text=text)
             await self._bot_svc.save_and_download_user_choice(context)
+    
+    async def send_message_to_get_acquainted(self, user_tg_id: int) -> None:
+        message = error_messages["1"]
+        keyboard = [[InlineKeyboardButton(Messages.have_sent_message_to_helper, callback_data="message_sent")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await self._bot.send_message(
+            chat_id=user_tg_id,
+            text=message,
+            reply_markup=reply_markup,
+        )
 
+
+bot_instance = MainBot()
 
 def main():
-    bot_instance = MainBot()
-    custom_base_url = "http://localhost:8081/"
-    request = CustomHTTPXRequest(base_url=custom_base_url)
-    application = Application.builder().token(config.TELEGRAM_BOT_TOKEN).request(request).build()
     application.add_handler(CommandHandler("start", bot_instance.start))
     application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_torrent))
-    application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=r'^(toggle_\d+|page_\d+|select_all|done)$'))
-    application.add_handler(CallbackQueryHandler(bot_instance.button))
-    application.run_polling(read_timeout=30, write_timeout=30)
-    # repo = Application.builder().token(config.TELEGRAM_REPO_BOT_TOKEN).build()
-    # repo.run_polling()
-
+    application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=r'^(toggle_\d+|page_\d+|select_all|done|message_sent)$'))
+    application.add_handler(CallbackQueryHandler(bot_instance.button, pattern=r'^start_pressed$'))
+    application.run_polling()
 
 if __name__ == "__main__":
-  main()
+    main()

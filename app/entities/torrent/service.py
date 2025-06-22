@@ -19,9 +19,7 @@ class TorrentService:
         return await self._torrent_mng.get_many(filter_by)
     
     async def update_torrent(self, data: dict, torrent_id: int) -> Torrent | None:
-        torrent = await self._torrent_mng.get(torrent_id)
-        if torrent:
-            return await self._torrent_mng.update(data, torrent_id)
+        return await self._torrent_mng.update(data, torrent_id)
 
 
 torrent_service = TorrentService()

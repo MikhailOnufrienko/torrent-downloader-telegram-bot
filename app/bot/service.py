@@ -48,6 +48,17 @@ class BotService:
         self._user_torrent_svc = user_torrent_service
         self._user_content_svc = user_content_service
         self.user_selections: dict[int, set] = dict()
+    
+    async def is_user_allowed_to_add_more_torrents(self, user_tg_id: int) -> dict:
+        user = await self._user_svc.get_by_tg_id(user_tg_id)
+        if not user:
+            logger.error(f"[!] User with tg_id {user_tg_id} not found in DB.")
+            return {"success": False, "error": True, "message": ""}
+        active_torrents = await self._user_torrent_svc.count_user_torrent_associations(user.id)
+        active_torrents_allowed = config.MAXIMUM_ACTIVE_TORRENTS
+        if active_torrents < active_torrents_allowed:
+            return {"success": True, "error": False, "message": ""}
+        return {"success": False, "error": False}
 
     async def save_user_if_not_exists(self, user: TGUser) -> User:
         return await self._user_svc.save_or_get_existing(user)

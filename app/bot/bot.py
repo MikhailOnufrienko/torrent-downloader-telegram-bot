@@ -52,11 +52,23 @@ class MainBot:
 
     async def handle_torrent(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = update.message
+        tg_user_id = update._effective_user
         if message.text and message.text.lower().startswith('magnet'):
+            result = self._bot_svc.is_user_allowed_to_add_more_torrents(tg_user_id)
+            if not result["success"]:
+                if result["error"]:
+                    await update.message.reply_text(error_messages["4"])
+                    return
+                await update.message.reply_text(Messages.not_allowed_to_add_more_torrents)
+                return
             magnet_link = message.text
             info_hash = None
             await update.message.reply_text(Messages.link_received)
         elif message.document:
+            is_allowed_to_add_torrent = self._bot_svc.is_user_allowed_to_add_more_torrents(tg_user_id)
+            if not is_allowed_to_add_torrent:
+                await update.message.reply_text(Messages.not_allowed_to_add_more_torrents)
+                return
             await update.message.reply_text(Messages.file_received)
             file = await message.document.get_file()
             byte_array = await file.download_as_bytearray()
@@ -99,9 +111,9 @@ class MainBot:
             result = await self._bot_svc.set_user_unblocked(user_tg_id)
             if not result["success"]:
                 logger.error(result["message"])
-                await query.message.reply_text("Ой! Что-то пошло не так...")
+                await query.message.reply_text(error_messages["4"])
                 return
-            await query.message.reply_text("Спасибо! Сообщение принято.")
+            await query.message.reply_text(Messages.message_accepted)
             logger.success(f"User successfully unblocked. User TG ID: {user_tg_id}")
             return
         contents = context.user_data['contents']

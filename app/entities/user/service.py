@@ -59,6 +59,12 @@ class UserTorrentService:
     async def delete_associations(self, user_id: int) -> int:
         rows_affected = await self._user_torrent_mng.delete(user_id)
         return rows_affected
+    
+    async def count_user_torrent_associations(self, user_id: int) -> int:
+        associations = await self._user_torrent_mng.get_many(user_id=user_id)
+        if associations:
+            return len(associations)
+        return 0
 
 
 class UserContentService:

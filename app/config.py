@@ -35,6 +35,7 @@ class Config(BaseSettings):
     HOST_SAVEPATH: str
     FILES_PER_PAGE: int
     MAXIMUM_TORRENTS_SIZE: int = 2147000000  # Approx. 2GB.
+    MAXIMUM_ACTIVE_TORRENTS: int = 3
 
     @property
     def postgres_dsn(self) -> str:

@@ -164,4 +164,8 @@ cython_debug/
 # VS Code
 .vscode/
 
+# Downloads
 torrent_downloads/
+
+# TG
+*.session

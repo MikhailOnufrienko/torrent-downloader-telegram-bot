@@ -13,7 +13,6 @@ from app.models import Content
 class Uploader:
     def __init__(self, bot: Bot = Bot(config.TELEGRAM_BOT_TOKEN)):
         self._bot = bot
-        self._chat_id = config.TELEGRAM_REPO_CHAT_ID
         self._tg_api_id = config.TELEGRAM_API_ID
         self._tg_api_hash = config.TELEGRAM_API_HASH
         self._known_user_ids: set[int] = set()
@@ -22,11 +21,15 @@ class Uploader:
         is_peer_known = await self._is_peer_known(user_tg_id)
         if not is_peer_known:
             return {"success": False, "error_code": "1"}
-        if len(contents) > 1:
-            file_to_send = self._make_archive(contents, torrent_title)
-        else:
-            file_to_send = contents[0].save_path
-        if not file_to_send:
+        try:
+            if len(contents) > 1:
+                file_to_send = self._make_archive(contents, torrent_title)
+            else:
+                file_to_send = contents[0].save_path
+            if not file_to_send:
+                print("No file to send! {file_to_send}")
+                return {"success": False, "error_code": "2"}
+        except IndexError:
             print("No file to send! {file_to_send}")
             return {"success": False, "error_code": "2"}
         result = await self._send_file_to_user(file_to_send, user_tg_id)

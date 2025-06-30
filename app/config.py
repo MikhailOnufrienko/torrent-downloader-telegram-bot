@@ -25,7 +25,6 @@ class Config(BaseSettings):
     AMQP_DSN: AmqpDsn = Field(default="amqp://guest:guest@rabbitmq:5672//")
     MAXIMUM_TORRENTS_TO_SEND: int = 16
     TELEGRAM_BOT_TOKEN: str
-    TELEGRAM_REPO_CHAT_ID: str
     TELEGRAM_API_ID: int
     TELEGRAM_API_HASH: str
     TELEGRAM_BOT_URL: str
@@ -35,6 +34,7 @@ class Config(BaseSettings):
     QBIT_SAVEPATH: str
     HOST_SAVEPATH: str
     FILES_PER_PAGE: int
+    MAXIMUM_TORRENTS_SIZE: int = 2147000000  # Approx. 2GB.
 
     @property
     def postgres_dsn(self) -> str:

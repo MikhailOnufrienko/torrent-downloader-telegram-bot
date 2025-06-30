@@ -21,6 +21,7 @@ kombu = "^5.4.2"
 amqp = "^5.3.1"
 pyrogram = "^2.0.106"
 tgcrypto = "^1.2.5"
+pygtrie = "^2.5.0"
 
 
 [build-system]

@@ -78,10 +78,8 @@ class Content(Base):
     index: orm.Mapped[int] = orm.mapped_column(sa.Integer)
     save_path: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text())
     file_name: orm.Mapped[str] = orm.mapped_column(sa.String(255))
-    file_hash_md5: orm.Mapped[Optional[str]] = orm.mapped_column(sa.String(32))
     size: orm.Mapped[int] = orm.mapped_column(sa.BigInteger)
     created_at: orm.Mapped[datetime_default_now]
-    is_deleted: orm.Mapped[flag_default_false]
     ready: orm.Mapped[flag_default_false]
     torrent_id: orm.Mapped[int] = orm.mapped_column(
         sa.Integer, ForeignKey('torrent.id', ondelete='CASCADE'), nullable=False
@@ -93,9 +91,6 @@ class Content(Base):
     )
 
     __tablename__ = 'content'
-    __table_args__ = (
-        sa.Index('idx_content_hash', 'file_hash_md5', postgresql_using='hash'),
-    )
 
 
 Models: list[type[Base]] = [User, Torrent, Content]

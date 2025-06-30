@@ -1,3 +1,4 @@
+import asyncio
 from io import BytesIO
 
 from loguru import logger
@@ -9,16 +10,14 @@ from telegram.request import HTTPXRequest
 from app.common.messages import Messages, error_messages
 from app.bot.service import BotService, bot_service
 from app.config import config
-from app.bot.structures import FileIDIndexPath
+from app.bot.structures import FileIDIndexPathSize
 
 
 class CustomHTTPXRequest(HTTPXRequest):
     def __init__(self, base_url: str, **kwargs):
-        # Инициализация родительского класса с аргументами
         super().__init__(**kwargs)
         self.base_url = base_url
 
-    # Переопределение метода build_url
     def build_url(self, endpoint: str) -> str:
         return f"{self.base_url}/{endpoint.lstrip('/')}"
 
@@ -26,6 +25,8 @@ class CustomHTTPXRequest(HTTPXRequest):
 custom_base_url = config.BOT_URL.unicode_string()
 request = CustomHTTPXRequest(base_url=custom_base_url)
 application = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).request(request).build()
+handle_callback_pattern = r'^(toggle_\d+|page_\d+|select_all|unselect_all|done|message_sent)$'
+button_pattern = r'^start_pressed$'
 
 
 class MainBot:
@@ -64,6 +65,15 @@ class MainBot:
         else:
             await update.message.reply_text(Messages.invitation_after_error)
             return
+        if not info_hash:
+            info_hash = self._bot_svc.extract_info_hash_from_magnet_link(magnet_link)
+            if not info_hash:
+                logger.error(f"No info hash generated from magnet_link {magnet_link}")
+                return
+        torrent_invalid = await self._bot_svc.is_torrent_invalid(magnet_link, info_hash)
+        if torrent_invalid:
+            await update.message.reply_text(Messages.torrent_is_invalid)
+            return
         result = await self._bot_svc.save_torrent_and_contents(
             update.message.from_user['id'], magnet_link, info_hash
         )
@@ -72,23 +82,27 @@ class MainBot:
         torrent, contents = result[0], result[1]
         context.user_data['torrent'] = torrent  # Here the torrent is linked to the user.
         files_id_index_path = [
-            FileIDIndexPath(id=content.id, index=content.index, path=content.file_name) for content in contents
+            FileIDIndexPathSize(
+                id=content.id, index=content.index, path=content.file_name, size=content.size
+            ) for content in contents
         ]
         context.user_data['contents'] = files_id_index_path  # Here all contents of the torrent are linked to the user.
-        self._bot_svc.user_selections[torrent.id] = set()  # This set will store the contents the user will choose.
+        self._bot_svc.user_selections[torrent.id] = set(file.path for file in files_id_index_path)  # This set will store the contents the user will choose.
         await self._bot_svc.send_page_with_files(files_id_index_path, update, context, page=0)
-    
+
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user_tg_id = update.effective_user.id
         query = update.callback_query
         await query.answer()
         data = query.data
         if data == "message_sent":
-            result = await self._bot_svc.set_user_unblocked(update)
+            result = await self._bot_svc.set_user_unblocked(user_tg_id)
             if not result["success"]:
                 logger.error(result["message"])
                 await query.message.reply_text("Ой! Что-то пошло не так...")
                 return
             await query.message.reply_text("Спасибо! Сообщение принято.")
+            logger.success(f"User successfully unblocked. User TG ID: {user_tg_id}")
             return
         contents = context.user_data['contents']
         torrent_id = context.user_data['torrent'].id
@@ -109,8 +123,17 @@ class MainBot:
         elif data == 'select_all':
             self._bot_svc.user_selections[torrent_id] = {file.path for file in contents}
             await self._bot_svc.send_page_with_files(contents, update, context, page=0)
+        elif data == 'unselect_all':
+            self._bot_svc.user_selections[torrent_id] = set()
+            await self._bot_svc.send_page_with_files(contents, update, context, page=0)
         elif data == 'done':
             # Selection is done.
+            size_exceeded = await self._bot_svc.is_selected_files_exceed_maximum_size(context)
+            if size_exceeded:
+                await query.edit_message_text(text=Messages.selected_files_maximum_size_exceeded)
+                await asyncio.sleep(1)
+                await self._bot_svc.send_page_with_files(contents, update, context, page=0, skip_edit=True)
+                return
             selected_items = self._bot_svc.user_selections.get(torrent_id, set())
             if len(selected_items) == len(contents):
                 await query.edit_message_text(text=Messages.all_files_selected)
@@ -137,8 +160,8 @@ bot_instance = MainBot()
 def main():
     application.add_handler(CommandHandler("start", bot_instance.start))
     application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_torrent))
-    application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=r'^(toggle_\d+|page_\d+|select_all|done|message_sent)$'))
-    application.add_handler(CallbackQueryHandler(bot_instance.button, pattern=r'^start_pressed$'))
+    application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=handle_callback_pattern))
+    application.add_handler(CallbackQueryHandler(bot_instance.button, pattern=button_pattern))
     application.run_polling()
 
 if __name__ == "__main__":

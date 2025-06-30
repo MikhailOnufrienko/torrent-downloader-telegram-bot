@@ -2,39 +2,64 @@ import os
 import re
 import zipfile
 
+from loguru import logger
 from pyrogram.client import Client
 from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
-from telegram import Bot
 
+from app.bot.bot import bot_instance
 from app.config import config
-from app.models import Content
+from app.models import Content, Torrent, User
+from app.entities.user.service import user_service, UserService
+from app.entities.torrent.service import torrent_service, TorrentService
 
 
 class Uploader:
-    def __init__(self, bot: Bot = Bot(config.TELEGRAM_BOT_TOKEN)):
-        self._bot = bot
+    def __init__(self, user_service: UserService = user_service, torrent_service: TorrentService = torrent_service):
         self._tg_api_id = config.TELEGRAM_API_ID
         self._tg_api_hash = config.TELEGRAM_API_HASH
+        self._torrent_svc = torrent_service
+        self._user_svc = user_service
         self._known_user_ids: set[int] = set()
     
-    async def __call__(self, user_tg_id: int, contents: list[Content], torrent_title: str) -> dict:
-        is_peer_known = await self._is_peer_known(user_tg_id)
+    async def __call__(self, user: User, contents: list[Content], torrent: Torrent) -> None:
+        is_peer_known = await self._is_peer_known(user.tg_id)
         if not is_peer_known:
-            return {"success": False, "error_code": "1"}
+            if not user.is_blocked:
+                await self._user_svc.set_user_blocked(user.id)
+                logger.debug(f"Sent unblocking message to user {user.id}")
+            await bot_instance.send_message_to_get_acquainted(user.tg_id)
+            return
         try:
             if len(contents) > 1:
-                file_to_send = self._make_archive(contents, torrent_title)
+                file_to_send = self._make_archive(contents, torrent.title)
             else:
                 file_to_send = contents[0].save_path
             if not file_to_send:
-                print("No file to send! {file_to_send}")
-                return {"success": False, "error_code": "2"}
+                logger.error("[!] No file to send! {file_to_send}")
+                return
         except IndexError:
-            print("No file to send! {file_to_send}")
-            return {"success": False, "error_code": "2"}
-        result = await self._send_file_to_user(file_to_send, user_tg_id)
-        self._delete_file(file_to_send) if len(contents) > 1 else None
-        return result
+            logger.error("[!] IndexError! No file to send! {file_to_send}")
+            return
+        result = await self._send_file_to_user(file_to_send, user.tg_id)
+        if not result["success"]:
+            if result["error_code"] == 1:
+                if not user.is_blocked:
+                    await self._user_svc.set_user_blocked(user.id)
+                    logger.debug(f"Sent unblocking message to user {user.id}")
+                    await bot_instance.send_message_to_get_acquainted(user.tg_id)
+                    return
+            if result["error_code"] == 2:
+                logger.error(f"[!] Uploader Error! Attempt to upload file {file_to_send} failed: return message is None!")
+                return
+            if result["error_code"] == 3:
+                logger.error(f"! Uploader Error !: File {file_to_send} not found!")
+                return
+        # TODO: Think how to update torrent if it is used by another user at the time.
+        torrent_updated = await self._torrent_svc.update_torrent({"is_task_done": True}, torrent.id)
+        if not torrent_updated:
+            logger.error(f"! Torrent Update Error !: Torrent {torrent.id} was not set is_task_done=True")
+        if len(contents) > 1:
+            self._delete_file(file_to_send)
     
     def _make_archive(self, contents: list[Content], torrent_title: str) -> str | None:
         file_paths = [content.save_path for content in contents]
@@ -62,14 +87,12 @@ class Uploader:
                             file_name=os.path.basename(file_path),
                         )
                         if not message:
-                            print(f"! Uploader Error !: Attempt to upload file {file_path} failed: return message is None!")
-                            return {"success": False, "error_code": "2"}
-                    return {"success": True}
+                            return {"success": False, "error": True, "error_code": "2"}
+                    return {"success": True, "error": False}
                 except PeerIdInvalid:
-                    return {"success": False, "error_code": "1"}
+                    return {"success": False, "error": True, "error_code": "1"}
         except FileNotFoundError:
-            print(f"! Uploader Error !: File {file_path} not found!")
-            return {"success": False, "error_code": "3"}
+            return {"success": False, "error": True, "error_code": "3"}
     
     async def _is_peer_known(self, user_id: int) -> bool:
         if user_id not in self._known_user_ids:

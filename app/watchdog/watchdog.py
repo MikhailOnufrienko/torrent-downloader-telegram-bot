@@ -12,7 +12,7 @@ from app.entities.user.service import (
     user_content_service, user_service, user_torrent_service
 )
 from app.config import config
-from app.uploader.uploader import Uploader, uploader
+from app.tasks.tasks import upload_downloaded_contents
 
 
 class Watchdog:
@@ -24,7 +24,6 @@ class Watchdog:
         user_content_service: UserContentService = user_content_service,
         user_service: UserService = user_service,
         user_torrent_service: UserTorrentService = user_torrent_service,
-        uploader: Uploader = uploader,
     ):
         self._torrent_cli = torrent_client
         self._torrent_svc = torrent_service
@@ -33,7 +32,6 @@ class Watchdog:
         self._user_svc = user_service
         self._user_torrent_svc = user_torrent_service
         self._savepath = config.HOST_SAVEPATH
-        self._uploader = uploader
     
     async def __call__(self):
         torrents_to_watch = await self._torrent_svc.get_many({'is_processing': True})
@@ -78,15 +76,8 @@ class Watchdog:
                         ready_files_counter += 1
                 if not ready_files_counter == len(ready_contents):
                     continue
-                result = await uploader(user.tg_id, ready_contents, torrent.title)
-                if not result["success"]:
-                    error_code = result["error_code"]
-                    if error_code == "1":
-                        if not user.is_blocked:
-                            await self._user_svc.set_user_blocked(user_id)
-                            logger.debug(f"Sent unblocking message to user {user_id}")
-                        await bot_instance.send_message_to_get_acquainted(user.tg_id)
-                        continue
+                upload_downloaded_contents.delay(user, ready_contents, torrent)
+                # TODO: Do the actions below only if the files successfully delivered.
                 contents_to_delete = [content.id for content in contents]
                 u_c_assoc_deleted = await self._user_content_svc.delete_associations(user_id, contents_to_delete)
                 u_t_assoc_deleted = await self._user_torrent_svc.delete_association(user_id, torrent.id)

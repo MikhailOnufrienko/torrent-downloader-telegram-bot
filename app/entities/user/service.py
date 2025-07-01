@@ -7,7 +7,7 @@ from app.entities.user.manager import (
     UserManager, UserTorrentManager, user_manager, user_torrent_manager,
     UserContentManager, user_content_manager,
 )
-from app.models import User, user_content_association, user_torrent_association
+from app.models import Torrent, User, user_content_association, user_torrent_association
 
 
 class UserService:
@@ -65,6 +65,10 @@ class UserTorrentService:
         if associations:
             return len(associations)
         return 0
+    
+    async def fetch_torrents_titles(self, user_id: int) -> list[Torrent]:
+        torrents = await self._user_torrent_mng.fetch_torrents(user_id)
+        return torrents
 
 
 class UserContentService:

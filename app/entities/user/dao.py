@@ -1,7 +1,7 @@
-from sqlalchemy import delete, and_
+from sqlalchemy import delete, and_, select
 
 from app.dao import BaseDAO
-from app.models import User, user_torrent_association, user_content_association
+from app.models import Torrent, User, user_torrent_association, user_content_association
 
 
 class UserDAO(BaseDAO):
@@ -10,6 +10,16 @@ class UserDAO(BaseDAO):
 
 class UserTorrentDAO(BaseDAO):
     model = user_torrent_association
+
+    @classmethod
+    async def fetch_user_torrents(cls, user_id: int):
+        query = (
+            select(Torrent)
+            .join(cls.model)
+            .where(cls.model.c.user_id == user_id)
+        )
+        result = await cls._execute_query(query)
+        return result.scalars(query).all()
 
 
 class UserContentDAO(BaseDAO):

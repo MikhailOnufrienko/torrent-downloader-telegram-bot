@@ -92,7 +92,6 @@ class BotService:
             self._torrent_cli.delete_permanently(info_hash)
         return invalid
 
-
     async def save_torrent_and_contents(
         self, user_tg_id: int, magnet_link: str, info_hash: str = None
      ) -> tuple[Torrent, list[Content]] | None:
@@ -215,6 +214,21 @@ class BotService:
         for file_size in selected_contents_sizes:
             total_size += file_size
         return total_size > config.MAXIMUM_TORRENTS_SIZE
+    
+    async def send_page_with_active_torrents(self, tg_user_id: int, update: Update, context: CallbackContext) -> dict:
+        user = await self._user_svc.get_by_tg_id(tg_user_id)
+        if not user:
+            logger.error(f"[!] User with tg_id {tg_user_id} not found in DB")
+            return {"success": False, "error": "4"}
+        user_torrents = await self._user_torrent_svc.fetch_torrents_titles(user.id)
+        if not user_torrents:
+            # TODO: вернуть сообщение о том, что активных торрентов нет.
+        keyboard = []
+        for torrent in user_torrents:
+            keyboard.append(InlineKeyboardButton(torrent.title))
+            keyboard.append(InlineKeyboardButton(Messages.remove, callback_data=f"torrent_{torrent.id}"))
+        chat_id = update.effective_chat.id
+        await context.bot.send_message(chat_id=chat_id, reply_markup=InlineKeyboardMarkup(keyboard))
 
 
 bot_service = BotService()

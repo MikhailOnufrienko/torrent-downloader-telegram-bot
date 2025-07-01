@@ -2,7 +2,7 @@ import asyncio
 from io import BytesIO
 
 from loguru import logger
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (CallbackQueryHandler, CommandHandler,
                           ContextTypes, MessageHandler, filters, ApplicationBuilder)
 from telegram.request import HTTPXRequest
@@ -37,6 +37,14 @@ class MainBot:
     ):
         self._bot_svc = bot_service
         self._bot = bot
+
+    async def set_menu(self, application):
+        commands = [
+            BotCommand("start", "Начать работу"),
+            BotCommand("my-active-torrents", "Активные торренты"),
+            BotCommand("send-feedback", "Отправить отзыв"),
+        ]
+        await application.bot.set_my_commands(commands)
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         keyboard = [[InlineKeyboardButton("Start", callback_data="start_pressed")]]
@@ -165,11 +173,16 @@ class MainBot:
             text=message,
             reply_markup=reply_markup,
         )
+    
+    async def show_active_torrents(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        tg_user = update.effective_user
+        await self._bot_svc.send_page_with_active_torrents(tg_user, update, context)
 
 
 bot_instance = MainBot()
 
 def main():
+    application.post_init = bot_instance.set_menu
     application.add_handler(CommandHandler("start", bot_instance.start))
     application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_torrent))
     application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=handle_callback_pattern))

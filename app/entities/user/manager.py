@@ -3,7 +3,7 @@ from telegram import User as TGUser
 
 from app.entities.user.dao import UserDAO, UserTorrentDAO, UserContentDAO
 from app.entities.user.schema import UserSaveSchema
-from app.models import User
+from app.models import Torrent, User
 
 
 class UserManager:
@@ -49,13 +49,15 @@ class UserTorrentManager:
         elif torrent_id:
             return await self._dao.find_all_in_secondary(torrent_id=torrent_id)
 
-
     async def delete(self, user_id: int, torrent_id: int | None = None) -> int:
         if torrent_id:
             rows_affected = await self._dao.delete(user_id=user_id, torrent_id=torrent_id)
             return rows_affected
         rows_affected = await self._dao.delete(user_id=user_id)
         return rows_affected
+    
+    async def fetch_torrents(self, user_id: int) -> list[Torrent]:
+        return await self._dao.fetch_user_torrents(user_id)
 
 
 class UserContentManager:

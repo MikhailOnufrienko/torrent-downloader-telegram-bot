@@ -8,17 +8,38 @@ from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
 
 from app.bot.bot import bot_instance
 from app.config import config
+from app.entities.content.service import ContentService, content_service
 from app.models import Content, Torrent, User
-from app.entities.user.service import user_service, UserService
+from app.entities.user.service import (
+    UserContentService,
+    UserService,
+    UserTorrentService,
+    user_service,
+    user_content_service,
+    user_torrent_service,
+)
 from app.entities.torrent.service import torrent_service, TorrentService
+from app.torrent_client.qbittorrent import TorrentClient, torrent_client
 
 
 class Uploader:
-    def __init__(self, user_service: UserService = user_service, torrent_service: TorrentService = torrent_service):
+    def __init__(
+        self,
+        content_service: ContentService = content_service,
+        user_service: UserService = user_service,
+        user_content_service: UserContentService = user_content_service,
+        torrent_client: TorrentClient = torrent_client,
+        torrent_service: TorrentService = torrent_service,
+        user_torrent_service: UserTorrentService = user_torrent_service,
+    ):
         self._tg_api_id = config.TELEGRAM_API_ID
         self._tg_api_hash = config.TELEGRAM_API_HASH
+        self._torrent_cli = torrent_client
         self._torrent_svc = torrent_service
+        self._content_svc = content_service
         self._user_svc = user_service
+        self._user_content_svc = user_content_service
+        self._user_torrent_svc = user_torrent_service
         self._known_user_ids: set[int] = set()
     
     async def __call__(self, user: User, contents: list[Content], torrent: Torrent) -> None:
@@ -54,10 +75,14 @@ class Uploader:
             if result["error_code"] == 3:
                 logger.error(f"! Uploader Error !: File {file_to_send} not found!")
                 return
-        # TODO: Think how to update torrent if it is used by another user at the time.
-        torrent_updated = await self._torrent_svc.update_torrent({"is_task_done": True}, torrent.id)
-        if not torrent_updated:
-            logger.error(f"! Torrent Update Error !: Torrent {torrent.id} was not set is_task_done=True")
+        contents_to_delete = [content.id for content in contents]
+        u_c_assoc_deleted = await self._user_content_svc.delete_associations(user.id, contents_to_delete)
+        u_t_assoc_deleted = await self._user_torrent_svc.delete_association(user.id, torrent.id)
+        user_torrent_associations = await self._user_torrent_svc.find_associations_by_torrent_id(torrent.id)
+        if len(user_torrent_associations) < 2:
+            torrent_updated = await self._torrent_svc.update_torrent({"is_processing": False}, torrent.id)
+            self._torrent_cli.delete_permanently(torrent.hash)
+            await self._content_svc.delete_by_torrent_id(torrent.id)
         if len(contents) > 1:
             self._delete_file(file_to_send)
     

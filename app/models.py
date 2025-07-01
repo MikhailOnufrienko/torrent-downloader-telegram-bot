@@ -58,7 +58,6 @@ class Torrent(Base):
     created_at: orm.Mapped[datetime_default_now]
     is_task_sent: orm.Mapped[flag_default_false]
     is_task_failed: orm.Mapped[flag_default_false]
-    is_task_done: orm.Mapped[flag_default_false]  # Torrent downloaded, contents sent to user.
     task_sent_at: orm.Mapped[Optional[datetime]] = orm.mapped_column(default=None)
     is_processing: orm.Mapped[flag_default_false]
     is_bad: orm.Mapped[flag_default_false]

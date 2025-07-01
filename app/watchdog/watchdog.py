@@ -32,7 +32,7 @@ class Watchdog:
         self._user_svc = user_service
         self._user_torrent_svc = user_torrent_service
         self._savepath = config.HOST_SAVEPATH
-    
+
     async def __call__(self):
         torrents_to_watch = await self._torrent_svc.get_many({'is_processing': True})
         for torrent in torrents_to_watch:
@@ -77,14 +77,6 @@ class Watchdog:
                 if not ready_files_counter == len(ready_contents):
                     continue
                 upload_downloaded_contents.delay(user, ready_contents, torrent)
-                # TODO: Do the actions below only if the files successfully delivered.
-                contents_to_delete = [content.id for content in contents]
-                u_c_assoc_deleted = await self._user_content_svc.delete_associations(user_id, contents_to_delete)
-                u_t_assoc_deleted = await self._user_torrent_svc.delete_association(user_id, torrent.id)
-                if len(user_torrent_associations) < 2:
-                    torrent_updated = await self._torrent_svc.update_torrent({"is_processing": False}, torrent.id)
-                    self._torrent_cli.delete_permanently(torrent.hash)
-                    await self._content_svc.delete_by_torrent_id(torrent.id)
 
     async def _delete_contents_from_db(self, torrent_id: int) -> int:
         rows_deleted = await self._content_svc.delete_by_torrent_id(torrent_id)

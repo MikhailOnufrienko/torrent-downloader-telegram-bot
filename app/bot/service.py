@@ -15,7 +15,6 @@ from loguru import logger
 
 from app.torrent_client.qbittorrent import TorrentClient, torrent_client
 from app.config import config
-from app.downloader.service import DownloadService, download_service
 from app.entities.content.service import ContentService, content_service
 from app.entities.torrent.service import TorrentService, torrent_service
 from app.entities.user.service import (UserService, user_service, UserTorrentService,
@@ -33,7 +32,6 @@ class BotService:
     def __init__(
         self,
         content_service: ContentService = content_service,
-        download_service: DownloadService = download_service,
         torrent_client: TorrentClient = torrent_client,
         torrent_service: TorrentService = torrent_service,
         user_service: UserService = user_service,
@@ -41,7 +39,6 @@ class BotService:
         user_content_service: UserContentService = user_content_service,
     ):
         self._content_svc = content_service
-        self._downl_svc = download_service
         self._torrent_cli = torrent_client
         self._torrent_svc = torrent_service
         self._user_svc = user_service
@@ -228,7 +225,7 @@ class BotService:
             return
         keyboard = []
         for torrent in user_torrents:
-            keyboard.append([InlineKeyboardButton(torrent.title, callback_data="torrenttitle")])
+            keyboard.append([InlineKeyboardButton(torrent.title, callback_data="nothing")])
             keyboard.append([InlineKeyboardButton(Messages.remove, callback_data=f"torrent_{torrent.id}")])
         await context.bot.send_message(
             chat_id=chat_id, text=Messages.your_active_torrents, reply_markup=InlineKeyboardMarkup(keyboard)

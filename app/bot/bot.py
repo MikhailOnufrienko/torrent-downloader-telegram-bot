@@ -25,7 +25,7 @@ class CustomHTTPXRequest(HTTPXRequest):
 custom_base_url = config.BOT_URL.unicode_string()
 request = CustomHTTPXRequest(base_url=custom_base_url)
 application = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).request(request).build()
-handle_callback_pattern = r'^(toggle_\d+|page_\d+|select_all|unselect_all|done|message_sent)$'
+handle_callback_pattern = r'^(toggle_\d+|page_\d+|select_all|unselect_all|done|message_sent|torrent_\d)$'
 button_pattern = r'^start_pressed$'
 
 
@@ -41,8 +41,8 @@ class MainBot:
     async def set_menu(self, application):
         commands = [
             BotCommand("start", "Начать работу"),
-            BotCommand("my-active-torrents", "Активные торренты"),
-            BotCommand("send-feedback", "Отправить отзыв"),
+            BotCommand("my_active_torrents", "Активные торренты"),
+            BotCommand("send_feedback", "Отправить отзыв"),
         ]
         await application.bot.set_my_commands(commands)
 
@@ -124,6 +124,11 @@ class MainBot:
             await query.message.reply_text(Messages.message_accepted)
             logger.success(f"User successfully unblocked. User TG ID: {user_tg_id}")
             return
+        if data.startswith("torrent_"):
+            torrent_id = data.split("_")[-1]
+            await self._bot_svc.delete_active_torrent(user_tg_id, int(torrent_id))
+            await query.edit_message_text(text=Messages.torrent_deleted)
+            return
         contents = context.user_data['contents']
         torrent_id = context.user_data['torrent'].id
         if data.startswith("toggle_"):
@@ -175,8 +180,13 @@ class MainBot:
         )
     
     async def show_active_torrents(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        tg_user = update.effective_user
-        await self._bot_svc.send_page_with_active_torrents(tg_user, update, context)
+        user_tg_id = update.effective_user.id
+        await self._bot_svc.send_page_with_active_torrents(user_tg_id, update, context)
+    
+    async def send_feedback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user_tg_id = update.effective_user.id
+        message = Messages.send_feedback
+        await self._bot.send_message(chat_id=user_tg_id, text=message)
 
 
 bot_instance = MainBot()
@@ -184,6 +194,8 @@ bot_instance = MainBot()
 def main():
     application.post_init = bot_instance.set_menu
     application.add_handler(CommandHandler("start", bot_instance.start))
+    application.add_handler(CommandHandler("my_active_torrents", bot_instance.show_active_torrents))
+    application.add_handler(CommandHandler("send_feedback", bot_instance.send_feedback))
     application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_torrent))
     application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=handle_callback_pattern))
     application.add_handler(CallbackQueryHandler(bot_instance.button, pattern=button_pattern))

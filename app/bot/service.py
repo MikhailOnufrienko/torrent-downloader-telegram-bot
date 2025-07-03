@@ -21,7 +21,7 @@ from app.entities.torrent.service import TorrentService, torrent_service
 from app.entities.user.service import (UserService, user_service, UserTorrentService,
                                        user_torrent_service, UserContentService, user_content_service)
 from app.models import Content, Torrent, User
-from app.common.messages import Messages
+from app.common.messages import Messages, error_messages
 from app.bot.structures import FileIDIndexPathSize
 
 
@@ -215,20 +215,37 @@ class BotService:
             total_size += file_size
         return total_size > config.MAXIMUM_TORRENTS_SIZE
     
-    async def send_page_with_active_torrents(self, tg_user_id: int, update: Update, context: CallbackContext) -> dict:
+    async def send_page_with_active_torrents(self, tg_user_id: int, update: Update, context: CallbackContext) -> None:
         user = await self._user_svc.get_by_tg_id(tg_user_id)
+        chat_id = update.effective_chat.id
         if not user:
             logger.error(f"[!] User with tg_id {tg_user_id} not found in DB")
-            return {"success": False, "error": "4"}
+            await context.bot.send_message(chat_id=chat_id, text=error_messages["4"])
+            return
         user_torrents = await self._user_torrent_svc.fetch_torrents_titles(user.id)
         if not user_torrents:
-            # TODO: вернуть сообщение о том, что активных торрентов нет.
+            await context.bot.send_message(chat_id=chat_id, text=Messages.no_active_torrents)
+            return
         keyboard = []
         for torrent in user_torrents:
-            keyboard.append(InlineKeyboardButton(torrent.title))
-            keyboard.append(InlineKeyboardButton(Messages.remove, callback_data=f"torrent_{torrent.id}"))
-        chat_id = update.effective_chat.id
-        await context.bot.send_message(chat_id=chat_id, reply_markup=InlineKeyboardMarkup(keyboard))
+            keyboard.append([InlineKeyboardButton(torrent.title, callback_data="torrenttitle")])
+            keyboard.append([InlineKeyboardButton(Messages.remove, callback_data=f"torrent_{torrent.id}")])
+        await context.bot.send_message(
+            chat_id=chat_id, text=Messages.your_active_torrents, reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    
+    async def delete_active_torrent(self, tg_user_id: int, torrent_id: int) -> None:
+        user = await self._user_svc.get_by_tg_id(tg_user_id)
+        await self._user_torrent_svc.delete_association(user.id, torrent_id)
+        logger.info(f"[*] Removed user_torrent_associations of user {user.id}, torrent {torrent_id}")
+        user_torrent_associations = await self._user_torrent_svc.count_user_torrent_associations(torrent_id)
+        u_c_associations = await self._user_content_svc.find_associations_by_user_id(user.id)
+        user_selected_contents_ids = [assoc["content_id"] for assoc in u_c_associations]
+        await self._user_content_svc.delete_associations(user.id, user_selected_contents_ids)
+        logger.info(f"[*] Removed user contents associations of user {user.id}")
+        if user_torrent_associations == 0:
+            await self._content_svc.delete_by_torrent_id(torrent_id)
+            logger.info(f"[*] Removed contents of torrent {torrent_id}")
 
 
 bot_service = BotService()

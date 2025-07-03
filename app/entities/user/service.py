@@ -60,8 +60,13 @@ class UserTorrentService:
         rows_affected = await self._user_torrent_mng.delete(user_id)
         return rows_affected
     
-    async def count_user_torrent_associations(self, user_id: int) -> int:
-        associations = await self._user_torrent_mng.get_many(user_id=user_id)
+    async def count_user_torrent_associations(self, user_id: int | None = None, torrent_id: int | None = None) -> int:
+        params = {}
+        if user_id:
+            params.update({"user_id": user_id})
+        elif torrent_id:
+            params.update({"torrent_id": torrent_id})
+        associations = await self._user_torrent_mng.get_many(**params)
         if associations:
             return len(associations)
         return 0

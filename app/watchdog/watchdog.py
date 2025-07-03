@@ -78,21 +78,5 @@ class Watchdog:
                     continue
                 upload_downloaded_contents.delay(user, ready_contents, torrent)
 
-    async def _delete_contents_from_db(self, torrent_id: int) -> int:
-        rows_deleted = await self._content_svc.delete_by_torrent_id(torrent_id)
-        return rows_deleted
-
-    async def _delete_contents_from_disk(self, file_paths: list[str]) -> None:
-        if not file_paths:
-            return
-        abs_paths = [os.path.abspath(p) for p in file_paths if p]
-        if len(abs_paths) == 1:
-            os.remove(file_paths[0])
-            return
-        common_root = os.path.commonpath(abs_paths)
-        if not os.path.isdir(common_root):
-            return
-        shutil.rmtree(common_root)
-
 
 watch_for_downloads = Watchdog()

@@ -60,9 +60,9 @@ class MainBot:
 
     async def handle_torrent(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         message = update.message
-        tg_user_id = update._effective_user
+        tg_user_id = update._effective_user.id
         if message.text and message.text.lower().startswith('magnet'):
-            result = self._bot_svc.is_user_allowed_to_add_more_torrents(tg_user_id)
+            result = await self._bot_svc.is_user_allowed_to_add_more_torrents(tg_user_id)
             if not result["success"]:
                 if result["error"]:
                     await update.message.reply_text(error_messages["4"])
@@ -73,7 +73,7 @@ class MainBot:
             info_hash = None
             await update.message.reply_text(Messages.link_received)
         elif message.document:
-            is_allowed_to_add_torrent = self._bot_svc.is_user_allowed_to_add_more_torrents(tg_user_id)
+            is_allowed_to_add_torrent = await self._bot_svc.is_user_allowed_to_add_more_torrents(tg_user_id)
             if not is_allowed_to_add_torrent:
                 await update.message.reply_text(Messages.not_allowed_to_add_more_torrents)
                 return

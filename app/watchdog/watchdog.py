@@ -1,6 +1,3 @@
-import os
-import shutil
-
 from loguru import logger
 
 from app.bot.bot import bot_instance

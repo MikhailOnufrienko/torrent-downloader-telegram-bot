@@ -5,6 +5,12 @@ from app.models import Torrent
 class TorrentService:
     def __init__(self, torrent_manager: TorrentManager = torrent_manager):
         self._torrent_mng = torrent_manager
+    
+    async def get(self, torrent_id: int) -> Torrent | None:
+        torrent = await self._torrent_mng.get(torrent_id)
+        if not torrent:
+            return 
+        return torrent
 
     async def save_or_get_existing(self, torrent: dict) -> Torrent:
         torrent_ = await self._torrent_mng.get_by_info_hash(torrent['info_hash'])

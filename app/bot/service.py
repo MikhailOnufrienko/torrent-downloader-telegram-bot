@@ -22,6 +22,7 @@ from app.entities.user.service import (UserService, user_service, UserTorrentSer
 from app.models import Content, Torrent, User
 from app.common.messages import Messages, error_messages
 from app.bot.structures import FileIDIndexPathSize
+from app.bot.utils import shorten_path
 
 
 class BotService:
@@ -146,9 +147,10 @@ class BotService:
         keyboard = []
         torrent_id = context.user_data['torrent'].id
         for idx, item in enumerate(page_items):
+            item_shortened = shorten_path(item, 50)
             selected = "✅" if item in self.user_selections.get(torrent_id, set()) else ""
             keyboard.append([
-                InlineKeyboardButton(f"{selected} {item}", callback_data=f"toggle_{start_idx + idx}")
+                InlineKeyboardButton(f"{selected} {item_shortened}", callback_data=f"toggle_{start_idx + idx}")
             ])
         nav_buttons = []
         if page > 0:
@@ -182,8 +184,10 @@ class BotService:
             discarded_file_indexes = [  # The files the user doesn't want to download.
                 content.index for content in contents if not content.path in self.user_selections[torrent.id]
             ]
-            for idx in discarded_file_indexes:
-                self._torrent_cli.set_file_priority(torrent.hash, idx, 0)
+            await asyncio.sleep(1)
+            priority_set = await self._set_files_priority(discarded_file_indexes, torrent.hash)
+            if not priority_set:
+                logger.debug(f"[?] Failed to set priority for torrent {torrent.id}, user {user.id}")
             for content_id in content_ids:
                 await self._user_content_svc.save_association(user.id, content_id)
             updated_torrent = await self._torrent_svc.update_torrent(
@@ -191,6 +195,25 @@ class BotService:
                 torrent.id
             )
             logger.debug(f'Torrent sent to download: id {torrent.id}.')
+    
+    async def _set_files_priority(self,discarded_file_indexes: list[int], torrent_hash: str) -> bool:
+        max_retries = 30
+        retry_delay = 2
+        for attempt in range(max_retries):
+            failed = False
+            for idx in discarded_file_indexes:
+                try:
+                    self._torrent_cli.set_file_priority(torrent_hash, idx, 0)
+                except HTTPError:
+                    failed = True
+                    break
+            if not failed:
+                break
+            else:
+                await asyncio.sleep(retry_delay)
+        else:
+            return False
+        return True
 
     async def set_user_unblocked(self, user_tg_id: int) -> dict:
         user = await self._user_svc.get_by_tg_id(user_tg_id)
@@ -243,6 +266,9 @@ class BotService:
         if user_torrent_associations == 0:
             await self._content_svc.delete_by_torrent_id(torrent_id)
             logger.info(f"[*] Removed contents of torrent {torrent_id}")
+            torrent = await self._torrent_svc.get(torrent_id)
+            if torrent:
+                self._torrent_cli.delete_permanently(torrent.hash)
 
 
 bot_service = BotService()

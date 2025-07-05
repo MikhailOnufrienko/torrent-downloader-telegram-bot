@@ -9,7 +9,7 @@ from pyrogram.errors.exceptions.bad_request_400 import PeerIdInvalid
 from app.bot.bot import bot_instance
 from app.config import config
 from app.entities.content.service import ContentService, content_service
-from app.models import Content, Torrent, User
+from app.models import Content
 from app.entities.user.service import (
     UserContentService,
     UserService,
@@ -42,7 +42,10 @@ class Uploader:
         self._user_torrent_svc = user_torrent_service
         self._known_user_ids: set[int] = set()
     
-    async def __call__(self, user: User, contents: list[Content], torrent: Torrent) -> None:
+    async def __call__(self, user_id: int, contents_ids: list[int], torrent_id: int) -> None:
+        user = await self._user_svc.get(user_id)
+        torrent = await self._torrent_svc.get(torrent_id)
+        contents = await self._content_svc.get_many_by_ids(contents_ids)
         is_peer_known = await self._is_peer_known(user.tg_id)
         if not is_peer_known:
             if not user.is_blocked:
@@ -105,7 +108,7 @@ class Uploader:
         try:
             with open(file_path, "rb") as file:
                 try:
-                    async with Client("uploader", api_id=self._tg_api_id, api_hash=self._tg_api_hash) as app:
+                    async with Client("/app/pyrogram_sessions/uploader", api_id=self._tg_api_id, api_hash=self._tg_api_hash) as app:
                         message = await app.send_document(
                             chat_id=user_id,
                             document=file,
@@ -126,7 +129,7 @@ class Uploader:
 
     async def _load_known_peers(self) -> None:
         """Загрузить список известных пользователей (peer'ов)"""
-        async with Client("uploader", api_id=self._tg_api_id, api_hash=self._tg_api_hash) as app:
+        async with Client("/app/pyrogram_sessions/uploader", api_id=self._tg_api_id, api_hash=self._tg_api_hash) as app:
             # Сохраняем только ID пользователей из личных чатов
             async for dialog in app.get_dialogs():
                 if dialog.chat.type.value == "private":

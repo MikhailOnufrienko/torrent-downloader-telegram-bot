@@ -71,7 +71,7 @@ class UserTorrentService:
             return len(associations)
         return 0
     
-    async def fetch_torrents_titles(self, user_id: int) -> list[Torrent]:
+    async def fetch_torrents_by_user_id(self, user_id: int) -> list[Torrent]:
         torrents = await self._user_torrent_mng.fetch_torrents(user_id)
         return torrents
 

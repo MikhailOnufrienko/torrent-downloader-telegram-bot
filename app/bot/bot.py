@@ -1,6 +1,7 @@
 import asyncio
 from io import BytesIO
 
+import debugpy
 from loguru import logger
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (CallbackQueryHandler, CommandHandler,
@@ -12,6 +13,7 @@ from app.bot.service import BotService, bot_service
 from app.config import config
 from app.bot.structures import FileIDIndexPathSize
 
+debugpy.listen(("0.0.0.0", 5685))
 
 class CustomHTTPXRequest(HTTPXRequest):
     def __init__(self, base_url: str, **kwargs):
@@ -25,7 +27,7 @@ class CustomHTTPXRequest(HTTPXRequest):
 custom_base_url = config.BOT_URL.unicode_string()
 request = CustomHTTPXRequest(base_url=custom_base_url)
 application = ApplicationBuilder().token(config.TELEGRAM_BOT_TOKEN).request(request).build()
-handle_callback_pattern = r'^(toggle_\d+|page_\d+|select_all|unselect_all|done|message_sent|torrent_\d)$'
+handle_callback_pattern = r'^(toggle_\d+|page_\d+|select_all|unselect_all|done|message_sent|nothing|torrent_\d+)$'
 button_pattern = r'^start_pressed$'
 
 
@@ -43,6 +45,7 @@ class MainBot:
             BotCommand("start", "Начать работу"),
             BotCommand("my_active_torrents", "Активные торренты"),
             BotCommand("send_feedback", "Отправить отзыв"),
+            BotCommand("about", "О боте"),
         ]
         await application.bot.set_my_commands(commands)
 
@@ -187,6 +190,10 @@ class MainBot:
         user_tg_id = update.effective_user.id
         message = Messages.send_feedback
         await self._bot.send_message(chat_id=user_tg_id, text=message)
+    
+    async def about(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        user_tg_id = update.effective_user.id
+        await self._bot.send_message(chat_id=user_tg_id, text=Messages.about)
 
 
 bot_instance = MainBot()
@@ -196,6 +203,7 @@ def main():
     application.add_handler(CommandHandler("start", bot_instance.start))
     application.add_handler(CommandHandler("my_active_torrents", bot_instance.show_active_torrents))
     application.add_handler(CommandHandler("send_feedback", bot_instance.send_feedback))
+    application.add_handler(CommandHandler("about", bot_instance.about))
     application.add_handler(MessageHandler(filters.TEXT | filters.Document.ALL, bot_instance.handle_torrent))
     application.add_handler(CallbackQueryHandler(bot_instance.handle_callback, pattern=handle_callback_pattern))
     application.add_handler(CallbackQueryHandler(bot_instance.button, pattern=button_pattern))

@@ -11,6 +11,7 @@ services:
       - ./torrent_downloads:/torrent_downloads
     ports:
       - 8081:8081
+      - 5685:5685
     command: >
       sh -c "
       alembic upgrade head &&
@@ -30,6 +31,7 @@ services:
     volumes:
       - ./.env:/.env
       - ./torrent_downloads:/torrent_downloads
+      - ./app/pyrogram_sessions:/app/pyrogram_sessions
     restart: always
     container_name: torrents-watchdog-celery-cont
     networks:
@@ -83,8 +85,8 @@ services:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - 5672:5672
+      - 15672:15672
     networks:
       - torrents-bot-network
 volumes:

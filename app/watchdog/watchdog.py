@@ -9,7 +9,7 @@ from app.entities.user.service import (
     user_content_service, user_service, user_torrent_service
 )
 from app.config import config
-from app.tasks.tasks import upload_downloaded_contents
+from app.tasks.upload_task import upload_downloaded_contents
 
 
 class Watchdog:
@@ -68,12 +68,16 @@ class Watchdog:
                             ready_content = await self._content_svc.update(
                                 {'save_path': file_path, 'ready': True}, torrent.id, file['index']
                             )
-                        ready_contents.append(ready_content)
+                        ready_contents.append(ready_content.id)
                         logger.debug(f'Content downloaded: id {ready_content.id}, save_path {ready_content.save_path}')
                         ready_files_counter += 1
                 if not ready_files_counter == len(ready_contents):
                     continue
-                upload_downloaded_contents.delay(user, ready_contents, torrent)
+                if ready_contents:
+                    upload_downloaded_contents.delay(user_id, ready_contents, torrent.id)
 
 
 watch_for_downloads = Watchdog()
+
+# import asyncio
+# asyncio.run(watch_for_downloads())

@@ -52,9 +52,11 @@ class BotService:
         if not user:
             logger.error(f"[!] User with tg_id {user_tg_id} not found in DB.")
             return {"success": False, "error": True, "message": ""}
-        active_torrents = await self._user_torrent_svc.count_user_torrent_associations(user.id)
+        user_torrents = await self._user_torrent_svc.fetch_torrents_by_user_id(user.id)
+        active_torrents = [torrent for torrent in user_torrents if torrent.is_processing]
+        active_torrents_amount = len(active_torrents)
         active_torrents_allowed = config.MAXIMUM_ACTIVE_TORRENTS
-        if active_torrents < active_torrents_allowed:
+        if active_torrents_amount < active_torrents_allowed:
             return {"success": True, "error": False, "message": ""}
         return {"success": False, "error": False}
 
@@ -242,14 +244,20 @@ class BotService:
             logger.error(f"[!] User with tg_id {tg_user_id} not found in DB")
             await context.bot.send_message(chat_id=chat_id, text=error_messages["4"])
             return
-        user_torrents = await self._user_torrent_svc.fetch_torrents_titles(user.id)
+        user_torrents = await self._user_torrent_svc.fetch_torrents_by_user_id(user.id)
         if not user_torrents:
             await context.bot.send_message(chat_id=chat_id, text=Messages.no_active_torrents)
             return
+        at_least_one_active_torrent = False
         keyboard = []
         for torrent in user_torrents:
-            keyboard.append([InlineKeyboardButton(torrent.title, callback_data="nothing")])
-            keyboard.append([InlineKeyboardButton(Messages.remove, callback_data=f"torrent_{torrent.id}")])
+            if torrent.is_processing:
+                at_least_one_active_torrent = True
+                keyboard.append([InlineKeyboardButton(torrent.title, callback_data="nothing")])
+                keyboard.append([InlineKeyboardButton(Messages.remove, callback_data=f"torrent_{torrent.id}")])
+        if not at_least_one_active_torrent:
+            await context.bot.send_message(chat_id=chat_id, text=Messages.no_active_torrents)
+            return
         await context.bot.send_message(
             chat_id=chat_id, text=Messages.your_active_torrents, reply_markup=InlineKeyboardMarkup(keyboard)
         )
@@ -269,6 +277,7 @@ class BotService:
             torrent = await self._torrent_svc.get(torrent_id)
             if torrent:
                 self._torrent_cli.delete_permanently(torrent.hash)
+                await self._torrent_svc.update_torrent({"is_processing": False}, torrent_id)
 
 
 bot_service = BotService()

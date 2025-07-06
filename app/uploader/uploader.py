@@ -19,7 +19,7 @@ from app.entities.user.service import (
     user_torrent_service,
 )
 from app.entities.torrent.service import torrent_service, TorrentService
-from app.torrent_client.qbittorrent import TorrentClient, torrent_client
+from app.torrent_client.qbittorrent import TorrentClient, torrent_client, with_relogin
 
 
 class Uploader:
@@ -84,7 +84,7 @@ class Uploader:
         user_torrent_associations = await self._user_torrent_svc.find_associations_by_torrent_id(torrent.id)
         if len(user_torrent_associations) < 2:
             torrent_updated = await self._torrent_svc.update_torrent({"is_processing": False}, torrent.id)
-            self._torrent_cli.delete_permanently(torrent.hash)
+            self._delete_permanently(torrent.hash)
             await self._content_svc.delete_by_torrent_id(torrent.id)
         if len(contents) > 1:
             self._delete_file(file_to_send)
@@ -145,5 +145,8 @@ class Uploader:
     def _delete_file(file_path: str) -> None:
         os.remove(file_path)
 
+    @with_relogin
+    def _delete_permanently(self, torrent_hash: str) -> None:
+        return self._torrent_cli.delete_permanently(torrent_hash)
 
 uploader = Uploader()

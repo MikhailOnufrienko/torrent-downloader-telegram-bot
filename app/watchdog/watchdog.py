@@ -1,7 +1,7 @@
 from loguru import logger
 
 from app.bot.bot import bot_instance
-from app.torrent_client.qbittorrent import TorrentClient, torrent_client
+from app.torrent_client.qbittorrent import TorrentClient, torrent_client, with_relogin
 from app.entities.torrent.service import TorrentService, torrent_service
 from app.entities.content.service import ContentService, content_service
 from app.entities.user.service import (
@@ -35,7 +35,7 @@ class Watchdog:
         for torrent in torrents_to_watch:
             user_torrent_associations = await self._user_torrent_svc.find_associations_by_torrent_id(torrent.id)
             contents = await self._content_svc.get_by_torrent_id(torrent.id)
-            torrent_files = self._torrent_cli.get_torrent_files(torrent.hash)
+            torrent_files = self._get_torrent_files(torrent.hash)
             if not torrent_files:
                 continue
             for assoc in user_torrent_associations:
@@ -75,6 +75,10 @@ class Watchdog:
                     continue
                 if ready_contents:
                     upload_downloaded_contents.delay(user_id, ready_contents, torrent.id)
+
+    @with_relogin
+    def _get_torrent_files(self, torrent_hash: str) -> dict:
+        return self._torrent_cli.get_torrent_files(torrent_hash)
 
 
 watch_for_downloads = Watchdog()

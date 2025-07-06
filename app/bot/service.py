@@ -13,7 +13,7 @@ from telegram.error import BadRequest
 from telegram.ext import CallbackContext
 from loguru import logger
 
-from app.torrent_client.qbittorrent import TorrentClient, torrent_client
+from app.torrent_client.qbittorrent import TorrentClient, torrent_client, with_relogin
 from app.config import config
 from app.entities.content.service import ContentService, content_service
 from app.entities.torrent.service import TorrentService, torrent_service
@@ -84,13 +84,17 @@ class BotService:
         
         """
         maximum_size = config.MAXIMUM_TORRENTS_SIZE
-        self._torrent_cli.download_from_link(magnet_link, savepath=config.QBIT_SAVEPATH)
+        self._download_from_link(magnet_link)
         await asyncio.sleep(5)
         torrent_files = self._torrent_cli.get_torrent_files(info_hash)
         invalid = all((file["size"] > maximum_size for file in torrent_files))
         if invalid:
             self._torrent_cli.delete_permanently(info_hash)
         return invalid
+
+    @with_relogin
+    def _download_from_link(self, magnet_link: str) -> None:
+        self._torrent_cli.download_from_link(magnet_link, savepath=config.QBIT_SAVEPATH)
 
     async def save_torrent_and_contents(
         self, user_tg_id: int, magnet_link: str, info_hash: str = None
@@ -103,7 +107,7 @@ class BotService:
         user = await self._user_svc.get_by_tg_id(user_tg_id)
         if not user:
             return None
-        torrent_info = await self.fetch_torrent_info(magnet_link, info_hash)
+        torrent_info = await self.fetch_torrent_info(info_hash)
         torrent = {
             'user': user,
             'title': torrent_info['name'],
@@ -113,22 +117,23 @@ class BotService:
         }
         torrent = await self._torrent_svc.save_or_get_existing(torrent)
         await self._user_torrent_svc.save_association(user.id, torrent.id)
-        try:
-            torrent_files = self._torrent_cli.get_torrent_files(info_hash)
-        except HTTPError:
-            # self._torrent_cli.download_from_link(magnet_link, savepath=config.QBIT_SAVEPATH)
-            # await asyncio.sleep(5)
-            torrent_files = self._torrent_cli.get_torrent_files(info_hash)
+        torrent_files = self._get_torrent_files(info_hash)
         contents = await self._content_svc.save_many_if_not_exists(torrent_files, torrent.id)
         self._torrent_cli.delete_permanently(info_hash)
         return torrent, contents
+    
+    @with_relogin
+    def _get_torrent_files(self, info_hash: str) -> dict:
+        return self._torrent_cli.get_torrent_files(info_hash)
 
-    async def fetch_torrent_info(self, magnet_link: str, info_hash: str) -> dict:
+    async def fetch_torrent_info(self, info_hash: str) -> dict:
         existing_torrent = await self._torrent_svc.get_by_info_hash(info_hash)
         if existing_torrent:
             return {'name': existing_torrent.title, 'total_size': existing_torrent.size}
-        # self._torrent_cli.download_from_link(magnet_link, savepath=config.QBIT_SAVEPATH)
-        # await asyncio.sleep(5)
+        return self._get_torrent(info_hash)
+    
+    @with_relogin
+    def _get_torrent(self, info_hash: str) -> dict:
         return self._torrent_cli.get_torrent(info_hash)
 
     @staticmethod
@@ -182,7 +187,7 @@ class BotService:
         contents: list[FileIDIndexPathSize] = context.user_data['contents']
         content_ids = [content.id for content in contents if content.path in self.user_selections[torrent.id]]
         if content_ids:
-            self._torrent_cli.download_from_link(torrent.magnet_link, savepath=config.QBIT_SAVEPATH)
+            self._download_from_link(torrent.magnet_link, savepath=config.QBIT_SAVEPATH)
             discarded_file_indexes = [  # The files the user doesn't want to download.
                 content.index for content in contents if not content.path in self.user_selections[torrent.id]
             ]
@@ -205,7 +210,7 @@ class BotService:
             failed = False
             for idx in discarded_file_indexes:
                 try:
-                    self._torrent_cli.set_file_priority(torrent_hash, idx, 0)
+                    self._set_file_priority(torrent_hash, idx)
                 except HTTPError:
                     failed = True
                     break
@@ -216,6 +221,10 @@ class BotService:
         else:
             return False
         return True
+    
+    @with_relogin
+    def _set_file_priority(self, torrent_hash: str, idx: int, priority: int = 0) -> None:
+        return self._torrent_cli.set_file_priority(torrent_hash, idx, priority)
 
     async def set_user_unblocked(self, user_tg_id: int) -> dict:
         user = await self._user_svc.get_by_tg_id(user_tg_id)
@@ -276,8 +285,12 @@ class BotService:
             logger.info(f"[*] Removed contents of torrent {torrent_id}")
             torrent = await self._torrent_svc.get(torrent_id)
             if torrent:
-                self._torrent_cli.delete_permanently(torrent.hash)
+                self._delete_permanently(torrent.hash)
                 await self._torrent_svc.update_torrent({"is_processing": False}, torrent_id)
+    
+    @with_relogin
+    def _delete_permanently(self, torrent_hash: str) -> None:
+        return self._torrent_cli.delete_permanently(torrent_hash)
 
 
 bot_service = BotService()

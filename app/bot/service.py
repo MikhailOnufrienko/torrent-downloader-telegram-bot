@@ -89,6 +89,9 @@ class BotService:
         torrent_files = self._torrent_cli.get_torrent_files(info_hash)
         invalid = all((file["size"] > maximum_size for file in torrent_files))
         if invalid:
+            print("torrent files: ", torrent_files)
+            print("The smallest file size: ", min((file["size"] for file in torrent_files), default=0))
+            print(f"The torrent {info_hash} is invalid")
             self._torrent_cli.delete_permanently(info_hash)
         return invalid
 
@@ -166,9 +169,9 @@ class BotService:
             nav_buttons.append(InlineKeyboardButton("➡️", callback_data=f"page_{page + 1}"))
         if nav_buttons:
             keyboard.append(nav_buttons)
-        keyboard.append([InlineKeyboardButton("Выбрать все файлы торрента", callback_data="select_all")])
-        keyboard.append([InlineKeyboardButton("Отменить выбор всех файлов", callback_data="unselect_all")])
-        keyboard.append([InlineKeyboardButton("✅ Готово", callback_data="done")])
+        keyboard.append([InlineKeyboardButton("Select all files", callback_data="select_all")])
+        keyboard.append([InlineKeyboardButton("Unselect all files", callback_data="unselect_all")])
+        keyboard.append([InlineKeyboardButton("✅ Ready", callback_data="done")])
         try:
             if update.callback_query and not skip_edit:
                 await update.callback_query.edit_message_text(
@@ -187,7 +190,7 @@ class BotService:
         contents: list[FileIDIndexPathSize] = context.user_data['contents']
         content_ids = [content.id for content in contents if content.path in self.user_selections[torrent.id]]
         if content_ids:
-            self._download_from_link(torrent.magnet_link, savepath=config.QBIT_SAVEPATH)
+            self._download_from_link(torrent.magnet_link)
             discarded_file_indexes = [  # The files the user doesn't want to download.
                 content.index for content in contents if not content.path in self.user_selections[torrent.id]
             ]

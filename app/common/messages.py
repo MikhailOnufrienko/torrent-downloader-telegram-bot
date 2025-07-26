@@ -1,29 +1,28 @@
 class Messages:
-    hello = 'Привет! Я помогу скачать торренты. Нажми Start, чтобы начать.'
-    invitation = 'Вставь magnet-ссылку на торрент или прикрепи торрент-файл и отправь ответным сообщением.'
-    link_received = 'Получена magnet-ссылка, идёт проверка...'
-    file_received = 'Получен файл, идёт проверка...'
-    invitation_after_error = 'Пожалуйста, пришли magnet-ссылку или прикрепи торрент-файл.'
-    select_files = 'Выбери файлы, которые хочешь скачать:'
-    files_selected = 'файлов выбрано. Я отправил их на закачку.'
-    no_file_selected = 'Ничего не выбрано. Что ж, отложим закачку на потом.'
-    all_files_selected = 'Выбраны все файлы. Я отправил их на закачку.'
-    have_sent_message_to_helper = 'Подтверждаю: я отправил(а) сообщение.'
-    selected_files_maximum_size_exceeded = 'Общий размер выбранных файлов не должен превышать 2 Гб (это временное ограничение). Удали некоторые файлы, чтобы снизить общий размер.'
-    torrent_is_invalid = 'В торренте нет файлов, которые были бы меньше максимального размера в 2 Гб (это временное ограничение). Выбери другой торрент для закачки.'
-    not_allowed_to_add_more_torrents = 'Можно иметь не более трёх активных торрентов. Чтобы добавить новый, дождись, пока один из твоих торрентов скачается, либо удали какой-либо торрент из закачки.'
-    message_accepted = 'Сообщение принято!'
-    your_active_torrents = 'Твои торренты в закачке:'
-    remove = 'Удалить из закачки'
-    no_active_torrents = 'Нет активных торрентов. Чтобы начать закачивать торренты, отправь магнет-ссылку или торрент-файл.'
-    torrent_deleted = 'Торрент удален.'
-    send_feedback = 'Отзыв можно отправить сюда: @torrentsready'
-    about = 'Torrents Downloader Telegram Bot, v.0.0.1-beta.'
-
+    hello = "Hi! I’ll help you download torrents. Press Start to begin."
+    invitation = "Paste a magnet link or attach a torrent file and send it in a reply."
+    link_received = "Magnet link received, checking..."
+    file_received = "File received, checking..."
+    invitation_after_error = "Please send a magnet link or attach a torrent file."
+    select_files = "Select the files you want to download:"
+    files_selected = "files selected. I’ve sent them for download."
+    no_file_selected = "Nothing selected. Well, let's postpone the download for now."
+    all_files_selected = "All files selected. I’ve sent them for download."
+    have_sent_message_to_helper = "Confirmed: I’ve sent the message."
+    selected_files_maximum_size_exceeded = "The total size of selected files must not exceed 2 GB (this is a temporary limit). Remove some files to reduce the total size."
+    torrent_is_invalid = "This torrent doesn’t contain any files smaller than the 2 GB limit (temporary). Please choose a different torrent to download."
+    not_allowed_to_add_more_torrents = "You can have no more than three active torrents. To add a new one, wait until one of your torrents finishes downloading or remove one."
+    message_accepted = "Message accepted!"
+    your_active_torrents = "Your torrents in progress:"
+    remove = "Remove from download"
+    no_active_torrents = "No active torrents. To start downloading, send a magnet link or a torrent file."
+    torrent_deleted = "Torrent deleted."
+    send_feedback = "You can send feedback here: @torrentsready"
+    about = "Torrents Downloader Telegram Bot, v.0.0.1-beta."
 
 error_messages = {
-    "1": "Бот имеет ограничения на отправку файлов. Чтобы мой помощник @torrentsready смог отправить файлы, он должен получить от тебя разрешение. Это нужно сделать только один раз. Пошли ему любое сообщение (любой символ или слово), затем подтверди здесь, нажав кнопку ниже:",
-    "2": "Произошла неизвестная ошибка загрузки файла.",
-    "3": "Произошла другая ошибка загрузки файла",
-    "4": "Упс! Произошла неизвестная ошибка...",
+    "1": "The bot has restrictions on sending files. For my helper @torrentsready to send files, you must grant permission. This only needs to be done once. Send them any message (any symbol or word), then confirm here by pressing the button below:",
+    "2": "An unknown error occurred while uploading the file.",
+    "3": "A different error occurred while uploading the file.",
+    "4": "Oops! An unknown error occurred...",
 }

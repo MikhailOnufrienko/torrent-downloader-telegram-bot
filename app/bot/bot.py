@@ -42,10 +42,10 @@ class MainBot:
 
     async def set_menu(self, application):
         commands = [
-            BotCommand("start", "Начать работу"),
-            BotCommand("my_active_torrents", "Активные торренты"),
-            BotCommand("send_feedback", "Отправить отзыв"),
-            BotCommand("about", "О боте"),
+            BotCommand("start", "Start"),
+            BotCommand("my_active_torrents", "Torrents in progress"),
+            BotCommand("send_feedback", "Send a feedback"),
+            BotCommand("about", "About this bot"),
         ]
         await application.bot.set_my_commands(commands)
 

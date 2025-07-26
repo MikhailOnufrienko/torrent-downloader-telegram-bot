@@ -1,11 +1,11 @@
-from pyrogram.client import Client
+# from pyrogram.client import Client
 
-api_id = int(input("Enter your api_id: "))
-api_hash = input("Enter your api_hash: ")
-session_name = "uploader_user"
+# api_id = int(input("Enter your api_id: "))
+# api_hash = input("Enter your api_hash: ")
+# session_name = "uploader_user"
 
-app = Client(session_name, api_id=api_id, api_hash=api_hash)
+# app = Client(session_name, api_id=api_id, api_hash=api_hash)
 
-app.start()  # здесь произойдёт ввод номера телефона, кода и, возможно, 2FA
-print("✅ Session created!")
-app.stop()
+# app.start()
+# print("✅ Session created!")
+# app.stop()

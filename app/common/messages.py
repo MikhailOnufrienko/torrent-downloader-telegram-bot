@@ -10,6 +10,7 @@ class Messages:
     all_files_selected = "All files selected. I’ve sent them for download."
     have_sent_message_to_helper = "Confirmed: I’ve sent the message."
     selected_files_maximum_size_exceeded = "The total size of selected files must not exceed 2 GB (this is a temporary limit). Remove some files to reduce the total size."
+    torrent_metadata_ungettable = "It's impossible to get metadata of the torrent you provided. Please choose another torrent to download or try again with this torrent later."
     torrent_is_invalid = "This torrent doesn’t contain any files smaller than the 2 GB limit (temporary). Please choose a different torrent to download."
     not_allowed_to_add_more_torrents = "You can have no more than three active torrents. To add a new one, wait until one of your torrents finishes downloading or remove one."
     message_accepted = "Message accepted!"

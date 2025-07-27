@@ -93,8 +93,11 @@ class MainBot:
             if not info_hash:
                 logger.error(f"No info hash generated from magnet_link {magnet_link}")
                 return
-        torrent_invalid = await self._bot_svc.is_torrent_invalid(magnet_link, info_hash)
-        if torrent_invalid:
+        invalid = await self._bot_svc.is_torrent_invalid(magnet_link, info_hash)
+        if not invalid["metadata"]:
+            await update.message.reply_text(Messages.torrent_metadata_ungettable)
+            return
+        if invalid["invalid"]:
             await update.message.reply_text(Messages.torrent_is_invalid)
             return
         result = await self._bot_svc.save_torrent_and_contents(

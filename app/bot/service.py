@@ -78,22 +78,29 @@ class BotService:
             magnet_link += f'&tr={torrent_data[b"announce"].decode()}'
         return info_hash, magnet_link
     
-    async def is_torrent_invalid(self, magnet_link: str, info_hash: str) -> bool:
+    async def is_torrent_invalid(self, magnet_link: str, info_hash: str) -> dict:
         """Check if torrent meets the maximum size requirements.
         Return True if all torrent files exceed the maximum size.
         
         """
         maximum_size = config.MAXIMUM_TORRENTS_SIZE
         self._download_from_link(magnet_link)
-        await asyncio.sleep(5)
-        torrent_files = self._torrent_cli.get_torrent_files(info_hash)
+        attempt = 0
+        while attempt < 12:
+            await asyncio.sleep(5)
+            torrent_files = self._torrent_cli.get_torrent_files(info_hash)
+            if torrent_files:
+                break
+            attempt += 1
+        if not torrent_files:
+            logger.info(f"[*] BOT SERVICE: Failed to get metadata of torrent {info_hash}")
+            self._torrent_cli.delete_permanently(info_hash)
+            return {"invalid": True, "metadata": False}
         invalid = all((file["size"] > maximum_size for file in torrent_files))
         if invalid:
-            print("torrent files: ", torrent_files)
-            print("The smallest file size: ", min((file["size"] for file in torrent_files), default=0))
-            print(f"The torrent {info_hash} is invalid")
+            logger.info(f"[*] BOT SERVICE: The torrent {info_hash} is invalid")
             self._torrent_cli.delete_permanently(info_hash)
-        return invalid
+        return {"invalid": invalid, "metadata": True}
 
     @with_relogin
     def _download_from_link(self, magnet_link: str) -> None:

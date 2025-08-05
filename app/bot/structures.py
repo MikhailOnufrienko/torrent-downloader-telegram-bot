@@ -1,3 +1,3 @@
 from collections import namedtuple
 
-FileIDIndexPath = namedtuple('FileIDIndexPath', 'id, index, path')
+FileIDIndexPathSize = namedtuple('FileIDIndexPath', 'id, index, path, size')

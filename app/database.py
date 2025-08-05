@@ -16,6 +16,8 @@ async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False
 
 intpk = Annotated[int, mapped_column(primary_key=True, autoincrement=True, index=True)]
 
+flag_default_true = Annotated[bool, mapped_column(default=True, server_default=sa.true())]
+
 flag_default_false = Annotated[bool, mapped_column(default=False, server_default=sa.false())]
 
 datetime_default_now = Annotated[

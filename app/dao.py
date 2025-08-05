@@ -1,9 +1,9 @@
 from abc import ABC
-from typing import Any, Optional, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
-from sqlalchemy import delete, insert, select, update
-from sqlalchemy.engine.result import ChunkedIteratorResult
-from sqlalchemy.exc import IntegrityError
+from loguru import logger
+from sqlalchemy import delete, insert, select, update, and_
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import DeclarativeBase
 
 from app.database import async_session
@@ -11,8 +11,8 @@ from app.database import async_session
 T = TypeVar("T", bound=DeclarativeBase)
 
 
-class BaseDAO(ABC):
-    model: T = None
+class BaseDAO(Generic[T], ABC):
+    model: type[T]
 
     @classmethod
     def _check_model(cls):
@@ -20,15 +20,18 @@ class BaseDAO(ABC):
             raise NotImplementedError()
 
     @staticmethod
-    async def _execute_query(query) -> ChunkedIteratorResult:
-        async with async_session() as session:
-            try:
-                result = await session.execute(query)
-                await session.commit()
-                return result
-            except IntegrityError as e:
-                await session.rollback()
-                raise Exception(e)
+    async def _execute_query(query):
+        try:
+            async with async_session() as session:
+                try:
+                    result = await session.execute(query)
+                    await session.commit()
+                    return result
+                except IntegrityError as e:
+                    await session.rollback()
+                    raise Exception(e)
+        except (OSError, OperationalError) as e:
+            logger.error(f"ERROR: CONNECTION TO DB FAILED! Stacktrace: {e}")
 
     @classmethod
     async def insert(cls, **kwargs) -> T:
@@ -74,5 +77,24 @@ class BaseDAO(ABC):
                 query = select(cls.model).filter_by(**filter_by)
                 result = await session.execute(query)
                 return result.scalar_one_or_none()
+            except IntegrityError as e:
+                raise Exception(e)
+    
+    @classmethod
+    async def find_all_in_secondary(cls, limit: Optional[int] = None, offset: Optional[int] = None, **filter_by) -> list[T]:
+        cls._check_model()
+        query = select(cls.model)
+        if filter_by:
+            conditions = [getattr(cls.model.c, key) == value for key, value in filter_by.items()]
+            query = query.where(and_(*conditions))
+        if limit:
+            query = query.limit(limit)
+        if offset:
+            query = query.offset(offset)
+        async with async_session() as session:
+            try:
+                result = await session.execute(query)
+                rows = result.mappings().all()
+                return rows
             except IntegrityError as e:
                 raise Exception(e)

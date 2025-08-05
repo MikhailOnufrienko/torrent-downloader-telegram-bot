@@ -1,0 +1,12 @@
+.rsync-exclude
+.env.example
+.git/
+.gitignore
+.ruff_cache/
+__pycache__/
+.vscode/
+torrent_downloads/
+bot_container_starter.sh
+celerybeat-schedule
+downloader.log
+docker-compose-dev.yml

@@ -4,7 +4,7 @@ from typing import Optional
 import sqlalchemy as sa
 from sqlalchemy import orm, ForeignKey
 
-from app.database import Base, datetime_default_now, flag_default_false, intpk
+from app.database import Base, datetime_default_now, flag_default_false, flag_default_true, intpk
 
 
 user_torrent_association = sa.Table(
@@ -24,12 +24,14 @@ user_content_association = sa.Table(
 
 class User(Base):
     id: orm.Mapped[intpk]
-    tg_id: orm.Mapped[int] = orm.mapped_column(index=True)
+    tg_id: orm.Mapped[sa.BigInteger] = orm.mapped_column(sa.BigInteger, index=True)
     username: orm.Mapped[str]
     first_name: orm.Mapped[Optional[str]]
     last_name: orm.Mapped[Optional[str]]
     is_subscriber: orm.Mapped[flag_default_false]
     is_bot: orm.Mapped[bool]
+    is_blocked: orm.Mapped[flag_default_true]
+    is_unblocking_message_sent: orm.Mapped[flag_default_false]
     language_code: orm.Mapped[str]
     created_at: orm.Mapped[datetime_default_now]
     updated_at: orm.Mapped[Optional[datetime]]
@@ -76,10 +78,8 @@ class Content(Base):
     index: orm.Mapped[int] = orm.mapped_column(sa.Integer)
     save_path: orm.Mapped[Optional[str]] = orm.mapped_column(sa.Text())
     file_name: orm.Mapped[str] = orm.mapped_column(sa.String(255))
-    file_hash_md5: orm.Mapped[Optional[str]] = orm.mapped_column(sa.String(32))
     size: orm.Mapped[int] = orm.mapped_column(sa.BigInteger)
     created_at: orm.Mapped[datetime_default_now]
-    is_deleted: orm.Mapped[flag_default_false]
     ready: orm.Mapped[flag_default_false]
     torrent_id: orm.Mapped[int] = orm.mapped_column(
         sa.Integer, ForeignKey('torrent.id', ondelete='CASCADE'), nullable=False
@@ -91,9 +91,6 @@ class Content(Base):
     )
 
     __tablename__ = 'content'
-    __table_args__ = (
-        sa.Index('idx_content_hash', 'file_hash_md5', postgresql_using='hash'),
-    )
 
 
 Models: list[type[Base]] = [User, Torrent, Content]

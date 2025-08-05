@@ -19,6 +19,10 @@ python-qbittorrent = "^0.4.3"
 celery = {extras = ["amqp"], version = "^5.4.0"}
 kombu = "^5.4.2"
 amqp = "^5.3.1"
+pyrogram = "^2.0.106"
+tgcrypto = "^1.2.5"
+pygtrie = "^2.5.0"
+debugpy = "^1.8.14"
 
 
 [build-system]

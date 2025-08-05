@@ -21,7 +21,7 @@ class Config(BaseSettings):
 
     MODE: Literal['DEV', 'PROD', 'TEST'] = 'DEV'
     BOT_URL: HttpUrl
-    POSTGRES_DSN: PostgresDsn = 'postgresql+asyncpg://postgres:postgres@localhost:5432/torrent_dl'
+    POSTGRES_DSN: PostgresDsn
     AMQP_DSN: AmqpDsn = Field(default="amqp://guest:guest@rabbitmq:5672//")
     MAXIMUM_TORRENTS_TO_SEND: int = 16
     TELEGRAM_BOT_TOKEN: str

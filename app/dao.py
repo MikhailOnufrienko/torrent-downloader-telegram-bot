@@ -1,9 +1,8 @@
 from abc import ABC
-from typing import Any, Optional, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 from loguru import logger
 from sqlalchemy import delete, insert, select, update, and_
-from sqlalchemy.engine.result import ChunkedIteratorResult
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import DeclarativeBase
 
@@ -12,8 +11,8 @@ from app.database import async_session
 T = TypeVar("T", bound=DeclarativeBase)
 
 
-class BaseDAO(ABC):
-    model: T = None
+class BaseDAO(Generic[T], ABC):
+    model: type[T]
 
     @classmethod
     def _check_model(cls):
@@ -21,7 +20,7 @@ class BaseDAO(ABC):
             raise NotImplementedError()
 
     @staticmethod
-    async def _execute_query(query) -> ChunkedIteratorResult:
+    async def _execute_query(query):
         try:
             async with async_session() as session:
                 try:
